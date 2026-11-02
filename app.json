@@ -39,6 +39,17 @@
         }
       ],
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "18997e54-6bba-4d16-8468-48df3e5ac3e2"
+      }
+    },
+    "owner": "oggy1"
   }
 }
