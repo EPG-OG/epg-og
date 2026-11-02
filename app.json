@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "EPG OG",
+    "slug": "epg-og",
+    "scheme": "epgog",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#14161a",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.epgog.app",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.epgog.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#14161a",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-image",
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "color": "#3ea4f0"
+        }
+      ],
+      "expo-font"
+    ]
+  }
+}

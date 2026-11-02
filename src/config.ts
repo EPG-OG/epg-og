@@ -1,0 +1,11 @@
+// Where the app downloads guide data from. Point this at the GitHub Pages site that
+// .github/workflows/epg.yml publishes, e.g. 'https://<you>.github.io/epg-guide'.
+// Left empty, the app uses the snapshot bundled from ./epg (handy for development).
+export const EPG_BASE_URL: string = 'https://oggy711.github.io/epg-og';
+
+// Your Buy Me a Coffee page.
+export const BUY_ME_A_COFFEE_URL: string = 'https://buymeacoffee.com/yourname';
+
+// How far back / ahead the grid shows, in hours.
+export const GUIDE_HOURS_BACK = 1;
+export const GUIDE_HOURS_AHEAD = 24;
