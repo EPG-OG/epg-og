@@ -43,3 +43,6 @@ _site/
 # generated native folders
 /ios
 /android
+
+# local preview config
+.claude/launch.json
