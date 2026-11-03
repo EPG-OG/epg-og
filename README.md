@@ -2,10 +2,12 @@
 
 A free TV guide for Android and iPhone (Expo / React Native), styled after a dark set-top box EPG.
 
+**Download for Android:** https://oggy711.github.io/epg-og (or the latest file under [Releases](https://github.com/Oggy711/epg-og/releases/latest))
+
 - **USA** and **UK** tabs, each split into Sports, Entertainment, News, Movies, Kids, Documentary and All Channels
 - Channel numbers, broadcaster logos, a live now-line, and New/Live badges
 - **Watchlist**: tap the bookmark on any upcoming show; you get a notification 5 minutes before it starts
-- **Buy Me a Coffee** tab
+- **Buy Me a Coffee** tab: https://buymeacoffee.com/epgog
 
 ## Run it
 
@@ -15,7 +17,25 @@ npm run web        # quick look in the browser
 npm start          # then scan the QR code with Expo Go, or press a / i
 ```
 
-Reminders use `expo-notifications`. They don't fire on web. For reliable testing on a phone, use a development build: `npx expo run:android`, or `eas build --profile development`.
+Reminders use `expo-notifications`. They don't fire on web.
+
+## How updates reach people
+
+| What changed | How it gets to installed apps |
+| --- | --- |
+| **TV listings and channel lineup** | Automatic. `.github/workflows/epg.yml` rebuilds them every 6 hours to GitHub Pages; the app downloads them on launch and hourly. |
+| **App code** (screens, layout, text, bug fixes) | Run `npx eas-cli@latest update --channel production --message "what changed"`. Installed apps download it on next launch and use it on the launch after. No new APK needed. |
+| **Native changes** (new native library, icon, app name, permissions, Expo SDK upgrade) | Bump `version` in `app.json` and publish a new APK (below). Apps on the old version don't get OTA updates built for the new one, so people need to install the new APK. |
+
+## Publishing a new APK to GitHub
+
+```bash
+sh scripts/release-apk.sh v1.1.0
+```
+
+This builds on EAS (profile `apk`, update channel `production`), waits, downloads the APK, and creates a GitHub release with it attached as `EPG-OG.apk`. The website's download button always points at the newest release.
+
+Play Store builds use the `production` profile (`npx eas-cli@latest build -p android --profile production`). The GitHub APK and the Play Store version are signed differently, so a phone can't switch between them without uninstalling first.
 
 ## Guide data
 
@@ -25,12 +45,11 @@ Reminders use `expo-notifications`. They don't fire on web. For reliable testing
 npm run epg
 ```
 
-- **Change channels or categories:** edit `scripts/lineup.mjs`. Channel IDs come from the matching `.txt` list on epgshare01, and the script warns about any ID it can't find.
-- **Keep listings fresh in production:** push to GitHub and enable Pages (Settings → Pages → Source: GitHub Actions). `.github/workflows/epg.yml` then rebuilds every 6 hours. Set `EPG_BASE_URL` in `src/config.ts` to `https://<you>.github.io/<repo>`. While it's empty, the app uses the snapshot bundled from `epg/`, which goes stale after about 2 days.
+- **Change channels or categories:** edit `scripts/lineup.mjs`. Channel IDs come from the matching `.txt` list on epgshare01, and the script warns about any ID it can't find. Pushing the change updates the hosted listings within minutes.
+- `EPG_BASE_URL` in `src/config.ts` points at `https://oggy711.github.io/epg-og`. If it can't be reached, the app falls back to the snapshot bundled from `epg/`.
 
-## Before you publish
+## Notes
 
-- Set `BUY_ME_A_COFFEE_URL` in `src/config.ts`.
-- Replace the placeholder icons in `assets/` and the app name in `app.json`.
-- Apple and tipping: the US App Store now allows external payment links, but other storefronts may reject an external "tip" link. A fallback is an in-app-purchase tip jar.
+- Apple and tipping: the US App Store allows external payment links, but other storefronts may reject an external "tip" link. A fallback is an in-app-purchase tip jar.
 - Channel logos are the broadcasters' trademarks. They're shown for identification only, and the About text in the Coffee tab says so.
+- `assets/icon-source.png` is the original artwork; `icon.png` and `adaptive-icon.png` are generated from it.

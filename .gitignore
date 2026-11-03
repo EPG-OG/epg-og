@@ -46,3 +46,6 @@ _site/
 
 # local preview config
 .claude/launch.json
+
+# APK downloads (scripts/release-apk.sh)
+.release/
