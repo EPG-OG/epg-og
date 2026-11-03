@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Oggy711/epg-og/releases/latest"><img src="https://img.shields.io/github/v/release/Oggy711/epg-og?label=version&color=3ea4f0" alt="Latest version"></a>
-  <a href="https://github.com/Oggy711/epg-og/releases"><img src="https://img.shields.io/github/downloads/Oggy711/epg-og/total?color=ff5fc8" alt="Downloads"></a>
+  <a href="https://github.com/EPG-OG/epg-og/releases/latest"><img src="https://img.shields.io/github/v/release/EPG-OG/epg-og?label=version&color=3ea4f0" alt="Latest version"></a>
+  <a href="https://github.com/EPG-OG/epg-og/releases"><img src="https://img.shields.io/github/downloads/EPG-OG/epg-og/total?color=ff5fc8" alt="Downloads"></a>
   <img src="https://img.shields.io/badge/platform-Android-3ddc84" alt="Android">
   <img src="https://img.shields.io/badge/price-free-success" alt="Free">
   <a href="https://buymeacoffee.com/epgog"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-ffdd00?logo=buymeacoffee&logoColor=000" alt="Buy me a coffee"></a>
