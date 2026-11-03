@@ -10,6 +10,7 @@ import { useNow } from '../useNow';
 import { CategoryBar } from './CategoryBar';
 import { GuideGrid } from './GuideGrid';
 import { ProgrammeSheet } from './ProgrammeSheet';
+import { UpdateBanner } from './UpdateBanner';
 
 const ALL = 'all';
 
@@ -44,6 +45,7 @@ export function RegionGuide({ region, title }: { region: RegionKey; title: strin
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>TV Guide</Text>
       </View>
+      <UpdateBanner />
       <CategoryBar categories={tabs} selected={category} onSelect={setCategory} />
 
       {!guide || !window ? (

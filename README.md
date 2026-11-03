@@ -24,8 +24,18 @@ Reminders use `expo-notifications`. They don't fire on web.
 | What changed | How it gets to installed apps |
 | --- | --- |
 | **TV listings and channel lineup** | Automatic. `.github/workflows/epg.yml` rebuilds them every 6 hours to GitHub Pages; the app downloads them on launch and hourly. |
-| **App code** (screens, layout, text, bug fixes) | Run `npx eas-cli@latest update --channel production --message "what changed"`. Installed apps download it on next launch and use it on the launch after. No new APK needed. |
-| **Native changes** (new native library, icon, app name, permissions, Expo SDK upgrade) | Bump `version` in `app.json` and publish a new APK (below). Apps on the old version don't get OTA updates built for the new one, so people need to install the new APK. |
+| **App code** (screens, layout, text, bug fixes) | Run `npm run update -- "what changed"`. It publishes to both the GitHub APK and the store builds. Installed apps download it on next launch and use it on the launch after. No new APK needed. |
+| **Native changes** (new native library, icon, app name, permissions, Expo SDK upgrade) | Bump `version` in `app.json` and publish a new APK (below). APK users see a "new version available" banner in the app; store users get it through the store. |
+
+## Two versions of the app
+
+`EXPO_PUBLIC_DISTRIBUTION` (set per build profile in `eas.json`, read in `src/distribution.ts`) produces two variants from the same code:
+
+| | GitHub APK (`apk` profile) | Play Store / App Store (`production` profile) |
+| --- | --- | --- |
+| Last tab | Buy Me a Coffee | About (store rules forbid links to outside payment pages) |
+| "New version available" banner | Yes, from `version.json` on the website | No, the store handles updates |
+| Update channel | `production` | `store` |
 
 ## Publishing a new APK to GitHub
 
@@ -33,7 +43,7 @@ Reminders use `expo-notifications`. They don't fire on web.
 sh scripts/release-apk.sh v1.1.0
 ```
 
-This builds on EAS (profile `apk`, update channel `production`), waits, downloads the APK, and creates a GitHub release with it attached as `EPG-OG.apk`. The website's download button always points at the newest release.
+This builds on EAS (profile `apk`), waits, downloads the APK, creates a GitHub release with it attached as `EPG-OG.apk`, and refreshes the website so `version.json` and the in-app banner announce it. The website's download button always points at the newest release.
 
 Play Store builds use the `production` profile (`npx eas-cli@latest build -p android --profile production`). The GitHub APK and the Play Store version are signed differently, so a phone can't switch between them without uninstalling first.
 
@@ -46,6 +56,7 @@ npm run epg
 ```
 
 - **Change channels or categories:** edit `scripts/lineup.mjs`. Channel IDs come from the matching `.txt` list on epgshare01, and the script warns about any ID it can't find. Pushing the change updates the hosted listings within minutes.
+- The listings workflow also re-enables itself on every scheduled run, so GitHub's 60-day inactivity pause never kicks in.
 - `EPG_BASE_URL` in `src/config.ts` points at `https://oggy711.github.io/epg-og`. If it can't be reached, the app falls back to the snapshot bundled from `epg/`.
 
 ## Notes

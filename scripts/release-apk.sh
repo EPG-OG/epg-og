@@ -26,3 +26,6 @@ done
 mkdir -p .release && curl -sSL -o .release/EPG-OG.apk "$URL"
 gh release create "$TAG" .release/EPG-OG.apk --title "EPG OG $TAG" --generate-notes
 gh release view "$TAG" --json url --jq .url
+
+# Refresh version.json on the website so the in-app update banner sees the new release
+gh workflow run epg.yml

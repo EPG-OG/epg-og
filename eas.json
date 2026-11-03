@@ -17,11 +17,17 @@
       "android": {
         "buildType": "apk"
       },
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_DISTRIBUTION": "github"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "store",
+      "env": {
+        "EXPO_PUBLIC_DISTRIBUTION": "store"
+      }
     }
   },
   "submit": {

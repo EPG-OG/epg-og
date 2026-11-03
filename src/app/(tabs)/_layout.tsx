@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import { StyleSheet, Text, View, type ColorValue } from 'react-native';
+import { showTipJar } from '../../distribution';
 import { colors } from '../../theme';
 import { useWatchlist } from '../../watchlist/WatchlistContext';
 
@@ -39,7 +40,12 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="coffee"
-        options={{ title: 'Buy Me a Coffee', tabBarIcon: ({ color, size }) => <Ionicons name="cafe" size={size} color={color as string} /> }}
+        options={{
+          title: showTipJar ? 'Buy Me a Coffee' : 'About',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name={showTipJar ? 'cafe' : 'information-circle'} size={size} color={color as string} />
+          ),
+        }}
       />
     </Tabs>
   );
