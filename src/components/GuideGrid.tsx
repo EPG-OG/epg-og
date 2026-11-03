@@ -57,11 +57,16 @@ export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
     [x, now, m.wide],
   );
 
-  // Open on the current half hour, like a set-top box guide.
+  // Open on the current half hour, like a set-top box guide. Done once the grid has laid out
+  // (a scrollTo before that is ignored), and again if the scale changes on rotation.
+  const opened = useRef(false);
+  const openOnNow = () => {
+    if (opened.current) return;
+    opened.current = true;
+    jumpToNow(false);
+  };
   useEffect(() => {
-    const id = requestAnimationFrame(() => jumpToNow(false));
-    return () => cancelAnimationFrame(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    opened.current = false;
   }, [from, m.pxPerMin]);
 
   const selectAndOpen = useCallback(
@@ -112,6 +117,7 @@ export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
             horizontal
             showsHorizontalScrollIndicator={false}
             scrollEventThrottle={16}
+            onContentSizeChange={(w) => w > 0 && openOnNow()}
             onScroll={(e) => {
               const offset = e.nativeEvent.contentOffset.x;
               headerRef.current?.scrollTo({ x: offset, animated: false });
