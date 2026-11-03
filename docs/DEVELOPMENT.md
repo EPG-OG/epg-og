@@ -50,7 +50,7 @@ npm run epg
 
 - **Change channels or categories:** edit `scripts/lineup.mjs`. Channel IDs come from the matching `.txt` list on epgshare01, and the script warns about any ID it can't find. Pushing the change updates the hosted listings within minutes.
 - The listings workflow also re-enables itself on every scheduled run, so GitHub's 60-day inactivity pause never kicks in.
-- `EPG_BASE_URL` in `src/config.ts` points at `https://oggy711.github.io/epg-og`. If it can't be reached, the app falls back to the snapshot bundled from `epg/`.
+- `EPG_BASE_URL` in `src/config.ts` points at `https://epgog.com`. If it can't be reached, the app falls back to the snapshot bundled from `epg/`.
 
 ## Notes
 

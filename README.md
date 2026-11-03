@@ -11,7 +11,7 @@
 </p>
 
 <h3 align="center">
-  <a href="https://oggy711.github.io/epg-og">⬇️ Download for Android</a>
+  <a href="https://epgog.com">⬇️ Download for Android</a>
 </h3>
 
 ---
@@ -46,7 +46,7 @@ Turn your phone sideways or use a tablet, and you get the full TV-style grid.
 - ⏱️ **Live now-line** across the grid, with **New** and **Live** badges on shows
 - 📝 **Show details**: description, running time, a progress bar for what's on now, and what's up next
 - 🔄 **Always fresh.** Listings update every 6 hours, and the app updates itself with fixes and new features
-- 🔒 **Private.** No account, no ads, no tracking. Your watchlist stays on your phone ([privacy policy](https://oggy711.github.io/epg-og/privacy.html))
+- 🔒 **Private.** No account, no ads, no tracking. Your watchlist stays on your phone ([privacy policy](https://epgog.com/privacy.html))
 
 ## Channels
 
@@ -80,7 +80,7 @@ Turn your phone sideways or use a tablet, and you get the full TV-style grid.
 
 ## Install on Android
 
-1. On your phone, open **[oggy711.github.io/epg-og](https://oggy711.github.io/epg-og)** and tap **Download for Android**.
+1. On your phone, open **[epgog.com](https://epgog.com)** and tap **Download for Android**.
 2. Open the downloaded file. If asked, allow your browser to install apps.
 3. Tap **Install**. If Play Protect warns about an unknown developer, choose **More details → Install anyway**.
 

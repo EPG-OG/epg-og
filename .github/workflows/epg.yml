@@ -35,7 +35,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view --repo "${{ github.repository }}" --json tagName,url \
-            --jq '{version: (.tagName | ltrimstr("v")), notesUrl: .url, apkUrl: "https://github.com/${{ github.repository }}/releases/latest/download/EPG-OG.apk"}' \
+            --jq '{version: (.tagName | ltrimstr("v")), notesUrl: .url, apkUrl: "https://epgog.com/download"}' \
             > _site/version.json || rm -f _site/version.json
           cat _site/version.json 2>/dev/null || echo "no release yet"
       - uses: actions/upload-pages-artifact@v3
