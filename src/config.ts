@@ -4,7 +4,7 @@
 export const EPG_BASE_URL: string = 'https://oggy711.github.io/epg-og';
 
 // Your Buy Me a Coffee page.
-export const BUY_ME_A_COFFEE_URL: string = 'https://buymeacoffee.com/yourname';
+export const BUY_ME_A_COFFEE_URL: string = 'https://buymeacoffee.com/epgog';
 
 // How far back / ahead the grid shows, in hours.
 export const GUIDE_HOURS_BACK = 1;

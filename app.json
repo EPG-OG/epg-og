@@ -18,10 +18,8 @@
     "android": {
       "package": "com.epgog.app",
       "adaptiveIcon": {
-        "backgroundColor": "#14161a",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#101940",
+        "foregroundImage": "./assets/adaptive-icon.png"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -50,6 +48,12 @@
         "projectId": "18997e54-6bba-4d16-8468-48df3e5ac3e2"
       }
     },
-    "owner": "oggy1"
+    "owner": "oggy1",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/18997e54-6bba-4d16-8468-48df3e5ac3e2"
+    }
   }
 }
