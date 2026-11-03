@@ -17,8 +17,9 @@ type Props = {
 
 export function ProgrammeSheet({ region, selection, now, onClose }: Props) {
   const insets = useSafeAreaInsets();
-  const { isSaved, toggle } = useWatchlist();
+  const { isSaved, toggle, findFollow, follow, unfollow } = useWatchlist();
   const { channel, programme: p } = selection ?? {};
+  const followed = p ? findFollow('title', p.t, region) : undefined;
   const airing = p ? p.s <= now && now < p.e : false;
   const saved = channel && p ? isSaved(channel.id, p.s) : false;
   const canSave = p ? p.e > now : false;
@@ -76,6 +77,20 @@ export function ProgrammeSheet({ region, selection, now, onClose }: Props) {
                 <Ionicons name="notifications-outline" size={12} color={colors.textDim} /> We'll remind you {REMINDER_MINUTES} min before it starts
               </Text>
             )}
+
+            <Pressable
+              onPress={() => (followed ? unfollow(followed.id) : follow('title', p.t, region))}
+              style={[styles.followBtn, followed && styles.followBtnOn]}
+              accessibilityRole="button"
+            >
+              <Ionicons name={followed ? 'repeat' : 'repeat-outline'} size={18} color={colors.accent} />
+              <Text style={styles.followText}>{followed ? 'Following every airing' : 'Follow this show'}</Text>
+            </Pressable>
+            <Text style={styles.saveHint}>
+              {followed
+                ? 'New airings are added to your watchlist automatically. Tap again to stop.'
+                : 'Adds every future airing to your watchlist, with reminders'}
+            </Text>
 
             {p.d && <Text style={styles.desc}>{p.d}</Text>}
 
@@ -139,6 +154,19 @@ const styles = StyleSheet.create({
   saveBtnOn: { backgroundColor: colors.cellNow },
   saveText: { color: colors.text, fontSize: 15, fontWeight: '700' },
   saveTextOn: { color: colors.textOnLight },
+  followBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 11,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.accent,
+  },
+  followBtnOn: { backgroundColor: 'rgba(62,164,240,0.15)' },
+  followText: { color: colors.accent, fontSize: 15, fontWeight: '700' },
   saveHint: { color: colors.textDim, fontSize: 12, textAlign: 'center', marginTop: 8 },
   desc: { color: colors.textDim, fontSize: 15, lineHeight: 22, marginTop: 16 },
   next: { marginTop: 20, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.divider },

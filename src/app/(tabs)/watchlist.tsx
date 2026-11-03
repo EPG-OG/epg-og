@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChannelLogo } from '../../components/ChannelLogo';
+import { FollowingPanel } from '../../components/FollowingPanel';
 import { colors } from '../../theme';
 import { formatDay, formatRange } from '../../time';
 import { useNow } from '../../useNow';
@@ -9,7 +10,7 @@ import { REMINDER_MINUTES, remindersSupported } from '../../watchlist/reminders'
 import { useWatchlist, type WatchItem } from '../../watchlist/WatchlistContext';
 
 export default function WatchlistScreen() {
-  const { items, remove } = useWatchlist();
+  const { items, remove, follows } = useWatchlist();
   const now = useNow();
   const upcoming = items.filter((i) => i.e > now);
 
@@ -36,6 +37,8 @@ export default function WatchlistScreen() {
         sections={sections}
         keyExtractor={(i) => i.key}
         contentContainerStyle={styles.list}
+        ListHeaderComponent={<FollowingPanel />}
+        keyboardShouldPersistTaps="handled"
         renderSectionHeader={({ section }) => <Text style={styles.day}>{section.title}</Text>}
         renderItem={({ item }) => {
           const airing = item.s <= now && now < item.e;
@@ -43,9 +46,12 @@ export default function WatchlistScreen() {
             <View style={styles.row}>
               <ChannelLogo uri={item.logo} crop={item.logoCrop} name={item.channelName} width={56} height={24} />
               <View style={styles.info}>
-                <Text style={styles.showTitle} numberOfLines={1}>
-                  {item.title}
-                </Text>
+                <View style={styles.titleRow}>
+                  {item.followId && <Ionicons name="repeat" size={14} color={colors.accent} accessibilityLabel="Added by a followed show" />}
+                  <Text style={styles.showTitle} numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                </View>
                 {item.subtitle && (
                   <Text style={styles.sub} numberOfLines={1}>
                     {item.subtitle}
@@ -66,9 +72,11 @@ export default function WatchlistScreen() {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="bookmark-outline" size={44} color={colors.divider} />
-            <Text style={styles.emptyTitle}>Nothing saved yet</Text>
+            <Text style={styles.emptyTitle}>{follows.length ? 'Nothing coming up yet' : 'Nothing saved yet'}</Text>
             <Text style={styles.emptyText}>
-              Tap the bookmark on any upcoming show in the guide to add it here{remindersSupported ? ' and get a reminder before it starts' : ''}.
+              {follows.length
+                ? 'New airings of the shows you follow will appear here as soon as they are in the listings.'
+                : `Tap the bookmark on any upcoming show in the guide to add it here${remindersSupported ? ' and get a reminder before it starts' : ''}.`}
             </Text>
           </View>
         }
@@ -94,11 +102,12 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   info: { flex: 1 },
-  showTitle: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  showTitle: { color: colors.text, fontSize: 16, fontWeight: '700', flexShrink: 1 },
   sub: { color: colors.textDim, fontSize: 13, marginTop: 1 },
   meta: { color: colors.textDim, fontSize: 12, marginTop: 4 },
   onNow: { color: colors.accent },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 10 },
+  empty: { alignItems: 'center', justifyContent: 'center', padding: 40, gap: 10 },
   emptyTitle: { color: colors.text, fontSize: 18, fontWeight: '700' },
   emptyText: { color: colors.textDim, fontSize: 14, textAlign: 'center', lineHeight: 20 },
 });

@@ -9,6 +9,7 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="search" options={{ animation: 'slide_from_bottom' }} />
       </Stack>
     </WatchlistProvider>
   );

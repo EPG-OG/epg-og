@@ -42,6 +42,8 @@ Turn your phone sideways or use a tablet, and you get the full TV-style grid.
 ## Features
 
 - 📺 **USA and UK guides**, each split into Sports, Entertainment, News, Movies, Kids and Documentary, plus All Channels
+- 🔁 **Follow shows and sports.** Tap "Follow this show", or follow a keyword like *NASCAR*, *NFL* or *Premier League*, and every new airing is added to your watchlist with a reminder
+- 🔎 **Search** shows, teams and channels across the USA and UK
 - 🔖 **Watchlist with reminders.** Tap the bookmark on any upcoming show and get a notification 5 minutes before it starts
 - ⏱️ **Live now-line** across the grid, with **New** and **Live** badges on shows
 - 📝 **Show details**: description, running time, a progress bar for what's on now, and what's up next
