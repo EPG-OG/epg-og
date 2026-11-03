@@ -16,20 +16,26 @@
 
 ---
 
-**EPG OG** is a TV guide that looks and feels like the one on your TV box: a dark channel grid with logos, channel numbers and a live "now" line. It covers **around 190 USA and UK channels**, has a one-tap watchlist that reminds you before your show starts, and the listings refresh by themselves. It's free, with no ads, no account and no tracking.
+**EPG OG** is a TV guide that looks and feels like the one on your TV box: a dark channel grid with logos, channel numbers and a live "now" line. It covers **around 190 USA and UK channels**, lets you **search** everything and **follow** your favourite shows and sports so you never miss them, and the listings refresh by themselves. It's free, with no ads, no account and no tracking.
 
 <table>
   <tr>
     <td align="center" width="33%"><img src="docs/images/phone-guide-usa.png" alt="USA sports guide" width="260"><br><b>Every channel at a glance</b><br><sub>Live now-line, New and Live badges</sub></td>
-    <td align="center" width="33%"><img src="docs/images/phone-details.png" alt="Show details" width="260"><br><b>Tap any show</b><br><sub>Description, progress and what's on next</sub></td>
-    <td align="center" width="33%"><img src="docs/images/phone-watchlist.png" alt="Watchlist" width="260"><br><b>One-tap watchlist</b><br><sub>Reminder 5 minutes before it starts</sub></td>
+    <td align="center" width="33%"><img src="docs/images/phone-search.png" alt="Search" width="260"><br><b>🆕 Search everything</b><br><sub>Shows, teams and channels, USA and UK</sub></td>
+    <td align="center" width="33%"><img src="docs/images/phone-details.png" alt="Follow a show" width="260"><br><b>🆕 Follow a show</b><br><sub>Every new airing added for you</sub></td>
   </tr>
   <tr>
+    <td align="center"><img src="docs/images/phone-watchlist.png" alt="Watchlist with followed shows" width="260"><br><b>Watchlist that fills itself</b><br><sub>Follow keywords like NASCAR or Premier League</sub></td>
     <td align="center"><img src="docs/images/phone-guide-uk.png" alt="UK entertainment guide" width="260"><br><b>USA and UK</b><br><sub>BBC, ITV, Channel 4, Sky and more</sub></td>
-    <td align="center"><img src="docs/images/phone-entertainment.png" alt="USA entertainment guide" width="260"><br><b>Sorted by category</b><br><sub>Sports, Entertainment, News, Movies, Kids, Docs</sub></td>
     <td align="center"><img src="docs/images/phone-coffee.png" alt="Buy me a coffee" width="260"><br><b>Free for everyone</b><br><sub>No ads; an optional coffee keeps it going</sub></td>
   </tr>
 </table>
+
+## 🆕 New: never miss your shows
+
+- **Follow this show:** open any show and tap **Follow this show**. Every future airing goes straight onto your watchlist, with a reminder 5 minutes before it starts.
+- **Follow a keyword:** type something like **NASCAR**, **NFL**, **Premier League** or **Bake Off** in the Watchlist tab, and every matching game, race or episode on any channel, in the USA or UK, is added automatically.
+- **Search:** tap 🔍 at the top of the guide to find any show, team or channel. Tap a channel to see its full schedule, or a show to save or follow it.
 
 ## Big-screen mode
 
