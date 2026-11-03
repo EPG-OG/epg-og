@@ -3,7 +3,7 @@
     "name": "EPG OG",
     "slug": "epg-og",
     "scheme": "epgog",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -52,7 +52,9 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/18997e54-6bba-4d16-8468-48df3e5ac3e2"
+      "url": "https://u.expo.dev/18997e54-6bba-4d16-8468-48df3e5ac3e2",
+      "fallbackToCacheTimeout": 3000,
+      "checkAutomatically": "ON_LOAD"
     }
   }
 }
