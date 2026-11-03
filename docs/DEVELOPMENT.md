@@ -33,10 +33,10 @@ Reminders use `expo-notifications`. They don't fire on web.
 ## Publishing a new APK to GitHub
 
 ```bash
-sh scripts/release-apk.sh v1.1.0
+sh scripts/release-apk.sh v1.1.0 "What changed, in Markdown"
 ```
 
-This builds on EAS (profile `apk`), waits, downloads the APK, creates a GitHub release with it attached as `EPG-OG.apk`, and refreshes the website so `version.json` and the in-app banner announce it. The website's download button always points at the newest release.
+Bump `version` in `app.json` first. This builds on EAS (profile `apk`), waits, then runs the **Publish release** workflow (`.github/workflows/release.yml`), which downloads the APK, creates the GitHub release as `github-actions[bot]` with it attached as `EPG-OG.apk`, and refreshes the website so `version.json` and the in-app banner announce it. The website's download button always points at the newest release.
 
 Play Store builds use the `production` profile (`npx eas-cli@latest build -p android --profile production`). The GitHub APK and the Play Store version are signed differently, so a phone can't switch between them without uninstalling first.
 

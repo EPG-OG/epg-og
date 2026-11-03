@@ -1,0 +1,41 @@
+# Publishes a built APK as a GitHub release. scripts/release-apk.sh triggers this, so
+# releases are created by github-actions[bot] rather than a personal account.
+name: Publish release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Version tag, e.g. v1.0.2
+        required: true
+      apk_url:
+        description: URL of the built APK (EAS build artifact)
+        required: true
+      notes:
+        description: Release notes (Markdown)
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag }}
+      APK_URL: ${{ inputs.apk_url }}
+      NOTES: ${{ inputs.notes }}
+    steps:
+      - name: Download APK
+        run: curl -fsSL -o EPG-OG.apk "$APK_URL" && ls -la EPG-OG.apk
+      - name: Create release
+        run: |
+          if [ -n "$NOTES" ]; then printf '%s\n' "$NOTES" > notes.md; else echo "EPG OG $TAG" > notes.md; fi
+          gh release create "$TAG" EPG-OG.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "EPG OG $TAG" --notes-file notes.md --latest
+      # Refresh version.json on epgog.com so the in-app update banner announces the release.
+      - name: Refresh website
+        run: gh workflow run epg.yml --repo "$GITHUB_REPOSITORY"
