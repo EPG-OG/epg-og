@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import { BUY_ME_A_COFFEE_URL } from '../../config';
@@ -58,6 +58,21 @@ export default function CoffeeScreen() {
           </Text>
           <Text style={styles.aboutText}>Version {Constants.expoConfig?.version}</Text>
         </View>
+
+        <View style={styles.official}>
+          <Ionicons name="shield-checkmark" size={20} color={colors.accent} />
+          <View style={styles.officialBody}>
+            <Text style={styles.aboutTitle}>Official app</Text>
+            <Text style={styles.aboutText}>
+              Only download EPG OG from <Text style={styles.link} onPress={() => WebBrowser.openBrowserAsync('https://epgog.com')}>epgog.com</Text>
+              {showTipJar ? '' : ' or the official app store'}. EPG OG is a TV guide only: it never plays streams, sells subscriptions
+              or asks for payment details. If a version does, it isn't from us.
+            </Text>
+            <Text style={styles.aboutText}>
+              Questions? <Text style={styles.link} onPress={() => Linking.openURL('mailto:support@epgog.com')}>support@epgog.com</Text>
+            </Text>
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -93,4 +108,16 @@ const styles = StyleSheet.create({
   about: { marginTop: 40, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.divider, alignSelf: 'stretch', gap: 10 },
   aboutTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
   aboutText: { color: colors.textDim, fontSize: 13, lineHeight: 19 },
+  official: {
+    flexDirection: 'row',
+    gap: 12,
+    alignSelf: 'stretch',
+    marginTop: 20,
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.accent,
+  },
+  officialBody: { flex: 1, gap: 6 },
+  link: { color: colors.accent, fontWeight: '700' },
 });

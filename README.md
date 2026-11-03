@@ -88,6 +88,8 @@ Turn your phone sideways or use a tablet, and you get the full TV-style grid.
 
 ## Install on Android
 
+> 🛡️ **Only download EPG OG from [epgog.com](https://epgog.com) or this repo's [Releases](https://github.com/EPG-OG/epg-og/releases).** EPG OG is a TV guide only: it never plays streams, sells subscriptions or asks for payment details. Copies from anywhere else may be modified or unsafe.
+
 1. On your phone, open **[epgog.com](https://epgog.com)** and tap **Download for Android**.
 2. Open the downloaded file. If asked, allow your browser to install apps.
 3. Tap **Install**. If Play Protect warns about an unknown developer, choose **More details → Install anyway**.
