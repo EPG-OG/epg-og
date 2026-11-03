@@ -92,6 +92,8 @@ An iPhone version isn't available yet.
 
 EPG OG is free and always will be. If it saves you some channel surfing, you can [buy me a coffee ☕](https://buymeacoffee.com/epgog). It helps keep the listings running.
 
+Missing a channel, found a bug or have an idea? Email **[support@epgog.com](mailto:support@epgog.com)** or [open an issue](https://github.com/EPG-OG/epg-og/issues).
+
 ## Disclaimer
 
 EPG OG shows TV listings only; it doesn't stream any content. Listings come from public XMLTV guide data. Channel names and logos are trademarks of their respective owners and are shown for identification only. EPG OG isn't affiliated with or endorsed by any broadcaster.
