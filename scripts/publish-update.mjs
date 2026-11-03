@@ -21,7 +21,13 @@ for (const { channel, distribution } of targets) {
   console.log(`\n> Publishing to "${channel}" (${distribution} build)`);
   const result = spawnSync(
     'npx',
-    ['eas-cli@latest', 'update', '--channel', channel, '--message', JSON.stringify(message), '--non-interactive'],
+    [
+      'eas-cli@latest', 'update',
+      '--channel', channel,
+      '--environment', 'production',
+      '--message', JSON.stringify(message),
+      '--non-interactive',
+    ],
     { stdio: 'inherit', shell: true, env: { ...process.env, EXPO_PUBLIC_DISTRIBUTION: distribution } },
   );
   if (result.status !== 0) process.exit(result.status ?? 1);
