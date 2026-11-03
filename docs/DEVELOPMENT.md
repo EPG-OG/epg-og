@@ -1,13 +1,6 @@
-# EPG OG
+# EPG OG: developer guide
 
-A free TV guide for Android and iPhone (Expo / React Native), styled after a dark set-top box EPG.
-
-**Download for Android:** https://oggy711.github.io/epg-og (or the latest file under [Releases](https://github.com/Oggy711/epg-og/releases/latest))
-
-- **USA** and **UK** tabs, each split into Sports, Entertainment, News, Movies, Kids, Documentary and All Channels
-- Channel numbers, broadcaster logos, a live now-line, and New/Live badges
-- **Watchlist**: tap the bookmark on any upcoming show; you get a notification 5 minutes before it starts
-- **Buy Me a Coffee** tab: https://buymeacoffee.com/epgog
+How the app, the listings pipeline and releases fit together. For what the app does, see the [README](../README.md).
 
 ## Run it
 
