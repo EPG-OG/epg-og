@@ -96,6 +96,8 @@ Turn your phone sideways or use a tablet, and you get the full TV-style grid.
 
 When a new version comes out, the app shows a banner. Tap it to download the update.
 
+**Using [Obtainium](https://obtainium.imranr.dev)?** Tap **Get it on Obtainium** on [epgog.com](https://epgog.com), or in Obtainium tap **Add App** and paste `https://github.com/EPG-OG/epg-og`. You'll get updates straight from our GitHub releases.
+
 An iPhone version isn't available yet.
 
 ## Support the app
