@@ -1,10 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FavouritesPicker } from '../../components/FavouritesPicker';
 import { GuideGrid } from '../../components/GuideGrid';
+import { HeaderActions } from '../../components/HeaderActions';
 import { ProgrammeSheet } from '../../components/ProgrammeSheet';
 import { GUIDE_HOURS_AHEAD, GUIDE_HOURS_BACK } from '../../config';
 import type { Channel, Programme, RegionKey } from '../../epg/types';
@@ -55,9 +55,7 @@ export default function FavouritesScreen() {
               <Ionicons name="add-circle-outline" size={26} color={colors.text} />
             </Pressable>
           )}
-          <Pressable onPress={() => router.push('/search')} hitSlop={10} accessibilityRole="button" accessibilityLabel="Search shows and channels">
-            <Ionicons name="search" size={24} color={colors.text} />
-          </Pressable>
+          <HeaderActions />
         </View>
       </View>
 
@@ -69,7 +67,7 @@ export default function FavouritesScreen() {
         <View style={styles.center}>
           <Ionicons name="star-outline" size={48} color={colors.divider} />
           <Text style={styles.emptyTitle}>No favourite channels yet</Text>
-          <Text style={styles.emptyText}>Pick the channels you actually watch and they'll all be here in one guide.</Text>
+          <Text style={styles.emptyText}>Pick the channels you actually watch and they'll all be here in one guide. You can also tap any channel's name in the guide to add it.</Text>
           <Pressable onPress={() => setPicking(true)} style={styles.addBtn} accessibilityRole="button">
             <Text style={styles.addText}>Choose channels</Text>
           </Pressable>
@@ -102,7 +100,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   titleBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 8, paddingBottom: 8 },
   title: { color: colors.text, fontSize: 26, fontWeight: '800' },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 4 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 18, padding: 4 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 10 },
   emptyTitle: { color: colors.text, fontSize: 18, fontWeight: '700', marginTop: 6 },
   emptyText: { color: colors.textDim, fontSize: 14, textAlign: 'center', lineHeight: 20 },

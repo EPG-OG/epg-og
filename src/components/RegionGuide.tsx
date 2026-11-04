@@ -1,7 +1,5 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GUIDE_HOURS_AHEAD, GUIDE_HOURS_BACK } from '../config';
 import type { Channel, Programme, RegionKey } from '../epg/types';
@@ -11,6 +9,7 @@ import { floorToHalfHour, nowSeconds } from '../time';
 import { useNow } from '../useNow';
 import { CategoryBar } from './CategoryBar';
 import { GuideGrid } from './GuideGrid';
+import { HeaderActions } from './HeaderActions';
 import { ProgrammeSheet } from './ProgrammeSheet';
 import { UpdateBanner } from './UpdateBanner';
 
@@ -46,15 +45,9 @@ export function RegionGuide({ region, title }: { region: RegionKey; title: strin
       <View style={styles.titleBar}>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>TV Guide</Text>
-        <Pressable
-          onPress={() => router.push('/search')}
-          style={styles.searchBtn}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Search shows and channels"
-        >
-          <Ionicons name="search" size={24} color={colors.text} />
-        </Pressable>
+        <View style={styles.actions}>
+          <HeaderActions />
+        </View>
       </View>
       <UpdateBanner />
       <CategoryBar categories={tabs} selected={category} onSelect={setCategory} />
@@ -89,7 +82,7 @@ const styles = StyleSheet.create({
   titleBar: { flexDirection: 'row', alignItems: 'baseline', gap: 8, paddingHorizontal: 14, paddingTop: 8 },
   title: { color: colors.text, fontSize: 26, fontWeight: '800' },
   subtitle: { color: colors.textDim, fontSize: 15, fontWeight: '600' },
-  searchBtn: { marginLeft: 'auto', alignSelf: 'center', padding: 4 },
+  actions: { marginLeft: 'auto', alignSelf: 'center', padding: 4 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   message: { color: colors.textDim, fontSize: 15, textAlign: 'center', lineHeight: 22 },
 });

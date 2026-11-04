@@ -40,6 +40,20 @@ export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
   const headerRef = useRef<ScrollViewInstance>(null);
   const gridRef = useRef<ScrollViewInstance>(null);
   const [selectedId, setSelectedId] = useState(channels[0]?.id);
+  const { isFavourite, toggleFavourite } = usePreferences();
+  const [toast, setToast] = useState<{ channel: Channel; added: boolean }>();
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
+
+  const toggleChannel = useCallback(
+    (channel: Channel) => {
+      setToast({ channel, added: !isFavourite(channel.id) });
+      toggleFavourite(channel.id);
+      clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setToast(undefined), 3500);
+    },
+    [isFavourite, toggleFavourite],
+  );
   // Left edge of the visible timeline, updated once scrolling settles. Titles of shows that
   // began off-screen slide right to stay readable, like a set-top box guide.
   const [viewX, setViewX] = useState(0);
@@ -136,7 +150,7 @@ export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
               i < firstDrawnRow || i > lastDrawnRow ? (
                 <View key={c.id} style={{ height: m.rowH }} />
               ) : (
-                <ChannelCell key={c.id} channel={c} selected={c.id === selectedId} m={m} onPress={() => setSelectedId(c.id)} />
+                <ChannelCell key={c.id} channel={c} selected={c.id === selectedId} favourite={isFavourite(c.id)} m={m} onToggle={toggleChannel} />
               ),
             )}
           </View>
@@ -180,6 +194,26 @@ export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
           </ScrollView>
         </View>
       </ScrollView>
+
+      {toast && (
+        <View style={styles.toast} accessibilityLiveRegion="polite">
+          <Ionicons name={toast.added ? 'star' : 'star-outline'} size={18} color={colors.coffee} />
+          <Text style={styles.toastText} numberOfLines={1}>
+            {toast.channel.name} {toast.added ? 'added to favourites' : 'removed from favourites'}
+          </Text>
+          <Pressable
+            onPress={() => {
+              toggleFavourite(toast.channel.id);
+              clearTimeout(toastTimer.current);
+              setToast(undefined);
+            }}
+            hitSlop={10}
+            accessibilityRole="button"
+          >
+            <Text style={styles.toastUndo}>Undo</Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }
@@ -187,24 +221,25 @@ export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
 const ChannelCell = memo(function ChannelCell({
   channel,
   selected,
+  favourite,
   m,
-  onPress,
+  onToggle,
 }: {
   channel: Channel;
   selected: boolean;
+  favourite: boolean;
   m: Metrics;
-  onPress: () => void;
+  onToggle: (channel: Channel) => void;
 }) {
-  const { isFavourite, toggleFavourite } = usePreferences();
-  const favourite = isFavourite(channel.id);
+  const star = (size: number) => <Ionicons name={favourite ? 'star' : 'star-outline'} size={size} color={favourite ? colors.coffee : colors.textDim} />;
   const nameStyle = [styles.channelName, selected && styles.selectedText];
   return (
     <Pressable
-      onPress={onPress}
-      onLongPress={() => toggleFavourite(channel.id)}
+      onPress={() => onToggle(channel)}
       style={[styles.channel, { height: m.rowH }]}
+      accessibilityRole="button"
       accessibilityLabel={`Channel ${channel.number}, ${channel.name}${favourite ? ', favourite' : ''}`}
-      accessibilityHint="Hold to add or remove from favourites"
+      accessibilityHint={favourite ? 'Removes from favourites' : 'Adds to favourites'}
     >
       {m.wide ? (
         <View style={styles.channelWide}>
@@ -213,7 +248,7 @@ const ChannelCell = memo(function ChannelCell({
           <Text style={[nameStyle, styles.channelNameWide]} numberOfLines={1}>
             {channel.name}
           </Text>
-          {favourite && <Ionicons name="star" size={15} color={colors.coffee} />}
+          {star(15)}
           {selected && <Ionicons name="play" size={16} color={colors.accent} />}
         </View>
       ) : (
@@ -224,7 +259,7 @@ const ChannelCell = memo(function ChannelCell({
           </View>
           <View style={styles.channelBottom}>
             {selected && <Ionicons name="play" size={10} color={colors.accent} />}
-            {favourite && <Ionicons name="star" size={10} color={colors.coffee} />}
+            {star(11)}
             <Text style={nameStyle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
               {channel.name}
             </Text>
@@ -375,5 +410,22 @@ const styles = StyleSheet.create({
   badgeLive: { color: colors.live },
   meta: { color: colors.textDim, fontSize: 11, marginTop: 3 },
   metaOnLight: { color: '#5c5f66' },
+  toast: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    bottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.divider,
+  },
+  toastText: { flex: 1, color: colors.text, fontSize: 14, fontWeight: '600' },
+  toastUndo: { color: colors.accent, fontSize: 14, fontWeight: '800' },
   nowLine: { position: 'absolute', top: 0, bottom: 0, width: 2, marginLeft: -1, backgroundColor: colors.accent, opacity: 0.9 },
 });

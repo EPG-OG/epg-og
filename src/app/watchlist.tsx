@@ -1,13 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { router } from 'expo-router';
 import { Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChannelLogo } from '../../components/ChannelLogo';
-import { FollowingPanel } from '../../components/FollowingPanel';
-import { colors } from '../../theme';
-import { formatDay, formatRange } from '../../time';
-import { useNow } from '../../useNow';
-import { REMINDER_MINUTES, remindersSupported } from '../../watchlist/reminders';
-import { useWatchlist, type WatchItem } from '../../watchlist/WatchlistContext';
+import { ChannelLogo } from '../components/ChannelLogo';
+import { FollowingPanel } from '../components/FollowingPanel';
+import { colors } from '../theme';
+import { formatDay, formatRange } from '../time';
+import { useNow } from '../useNow';
+import { REMINDER_MINUTES, remindersSupported } from '../watchlist/reminders';
+import { useWatchlist, type WatchItem } from '../watchlist/WatchlistContext';
 
 export default function WatchlistScreen() {
   const { items, remove, follows } = useWatchlist();
@@ -25,6 +26,14 @@ export default function WatchlistScreen() {
   return (
     <SafeAreaView edges={['top']} style={styles.root}>
       <View style={styles.titleBar}>
+        <Pressable
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Close watchlist"
+        >
+          <Ionicons name="close" size={26} color={colors.text} />
+        </Pressable>
         <Text style={styles.title}>Watchlist</Text>
       </View>
       {remindersSupported && upcoming.length > 0 && (
@@ -87,7 +96,7 @@ export default function WatchlistScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
-  titleBar: { paddingHorizontal: 14, paddingTop: 8, paddingBottom: 4 },
+  titleBar: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 4 },
   title: { color: colors.text, fontSize: 26, fontWeight: '800' },
   hint: { color: colors.textDim, fontSize: 13, paddingHorizontal: 14, paddingBottom: 6 },
   list: { paddingHorizontal: 12, paddingBottom: 24, flexGrow: 1 },
