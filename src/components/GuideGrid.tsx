@@ -19,6 +19,10 @@ type Props = {
 type Metrics = { wide: boolean; channelW: number; rowH: number; pxPerMin: number; headerH: number };
 
 const GAP = 4;
+// Only rows and shows near the screen are drawn; the rest are empty space of the right size.
+// Rows beyond the screen to keep ready, and how far to scroll before redrawing (rows must stay smaller).
+const ROW_OVERSCAN = 8;
+const ROW_REDRAW = 4;
 
 function useMetrics(): Metrics {
   const { width } = useWindowDimensions();
@@ -30,6 +34,7 @@ function useMetrics(): Metrics {
 
 export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
   const m = useMetrics();
+  const { width: screenW, height: screenH } = useWindowDimensions();
   const headerRef = useRef<ScrollViewInstance>(null);
   const gridRef = useRef<ScrollViewInstance>(null);
   const [selectedId, setSelectedId] = useState(channels[0]?.id);
@@ -37,6 +42,14 @@ export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
   // began off-screen slide right to stay readable, like a set-top box guide.
   const [viewX, setViewX] = useState(0);
   const settleTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Where drawing is centred: the top row and left edge, updated in steps while scrolling.
+  const [topRow, setTopRow] = useState(0);
+  const [drawX, setDrawX] = useState(0);
+
+  const firstDrawnRow = topRow - ROW_OVERSCAN;
+  const lastDrawnRow = topRow + Math.ceil(screenH / m.rowH) + ROW_OVERSCAN;
+  const drawFrom = from + ((drawX - screenW * 1.5) / m.pxPerMin) * 60;
+  const drawTo = from + ((drawX + screenW * 2.5) / m.pxPerMin) * 60;
 
   const x = useCallback((t: number) => ((t - from) / 60) * m.pxPerMin, [from, m.pxPerMin]);
   const totalW = x(to);
@@ -53,6 +66,7 @@ export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
       gridRef.current?.scrollTo({ x: target, animated });
       headerRef.current?.scrollTo({ x: target, animated });
       setViewX(target);
+      setDrawX(target);
     },
     [x, now, m.wide],
   );
@@ -105,12 +119,24 @@ export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
       </View>
       <View style={styles.divider} />
 
-      <ScrollView style={styles.root} contentContainerStyle={styles.gridContent}>
+      <ScrollView
+        style={styles.root}
+        contentContainerStyle={styles.gridContent}
+        scrollEventThrottle={32}
+        onScroll={(e) => {
+          const row = Math.floor(e.nativeEvent.contentOffset.y / m.rowH);
+          setTopRow((prev) => (Math.abs(prev - row) >= ROW_REDRAW ? row : prev));
+        }}
+      >
         <View style={styles.row}>
           <View style={{ width: m.channelW }}>
-            {channels.map((c) => (
-              <ChannelCell key={c.id} channel={c} selected={c.id === selectedId} m={m} onPress={() => setSelectedId(c.id)} />
-            ))}
+            {channels.map((c, i) =>
+              i < firstDrawnRow || i > lastDrawnRow ? (
+                <View key={c.id} style={{ height: m.rowH }} />
+              ) : (
+                <ChannelCell key={c.id} channel={c} selected={c.id === selectedId} m={m} onPress={() => setSelectedId(c.id)} />
+              ),
+            )}
           </View>
           <ScrollView
             ref={gridRef}
@@ -121,25 +147,32 @@ export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
             onScroll={(e) => {
               const offset = e.nativeEvent.contentOffset.x;
               headerRef.current?.scrollTo({ x: offset, animated: false });
+              setDrawX((prev) => (Math.abs(prev - offset) >= screenW / 2 ? offset : prev));
               clearTimeout(settleTimer.current);
               settleTimer.current = setTimeout(() => setViewX(offset), 120);
             }}
           >
             <View style={{ width: totalW }}>
-              {channels.map((c) => (
-                <ProgrammeRow
-                  key={c.id}
-                  region={region}
-                  channel={c}
-                  selected={c.id === selectedId}
-                  now={now}
-                  from={from}
-                  to={to}
-                  viewX={viewX}
-                  m={m}
-                  onOpen={selectAndOpen}
-                />
-              ))}
+              {channels.map((c, i) =>
+                i < firstDrawnRow || i > lastDrawnRow ? (
+                  <View key={c.id} style={{ height: m.rowH }} />
+                ) : (
+                  <ProgrammeRow
+                    key={c.id}
+                    region={region}
+                    channel={c}
+                    selected={c.id === selectedId}
+                    now={now}
+                    from={from}
+                    to={to}
+                    drawFrom={drawFrom}
+                    drawTo={drawTo}
+                    viewX={viewX}
+                    m={m}
+                    onOpen={selectAndOpen}
+                  />
+                ),
+              )}
               <View pointerEvents="none" style={[styles.nowLine, { left: x(now) }]} />
             </View>
           </ScrollView>
@@ -197,6 +230,8 @@ const ProgrammeRow = memo(function ProgrammeRow({
   now,
   from,
   to,
+  drawFrom,
+  drawTo,
   viewX,
   m,
   onOpen,
@@ -207,13 +242,15 @@ const ProgrammeRow = memo(function ProgrammeRow({
   now: number;
   from: number;
   to: number;
+  drawFrom: number;
+  drawTo: number;
   viewX: number;
   m: Metrics;
   onOpen: (c: Channel, p: Programme) => void;
 }) {
   const { isSaved, toggle } = useWatchlist();
-  const visible = channel.programmes.filter((p) => p.e > from && p.s < to);
-  const next = selected ? visible.find((p) => p.s >= now) : undefined;
+  const visible = channel.programmes.filter((p) => p.e > Math.max(from, drawFrom) && p.s < Math.min(to, drawTo));
+  const next = selected ? channel.programmes.find((p) => p.s >= now) : undefined;
 
   return (
     <View style={{ height: m.rowH }}>
