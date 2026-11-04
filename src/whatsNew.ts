@@ -13,6 +13,14 @@ export type WhatsNewEntry = {
 // once on their next launch. Bug fixes and listings changes don't need one.
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: 2,
+    title: 'Latest update',
+    items: [
+      { icon: 'reorder-three-outline', text: 'Put your favourites in any order: hold a channel and drag it' },
+      { icon: 'trash-outline', text: 'Swipe a favourite left to remove it. Tapping no longer removes one, so no more accidents' },
+    ],
+  },
+  {
     id: 1,
     title: 'Version 1.0.4',
     items: [

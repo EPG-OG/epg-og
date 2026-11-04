@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import type { RegionKey } from '../epg/types';
 
 export const REMINDER_OPTIONS = [5, 15, 30];
@@ -7,10 +7,11 @@ export const REMINDER_OPTIONS = [5, 15, 30];
 type Preferences = {
   /** False until saved preferences have been read from the phone. */
   loaded: boolean;
-  /** Favourite channel ids, in the order they were added. Ids are unique across countries. */
+  /** Favourite channel ids, in the user's order. Ids are unique across countries. */
   favourites: string[];
   isFavourite: (channelId: string) => boolean;
   toggleFavourite: (channelId: string) => void;
+  setFavourites: Dispatch<SetStateAction<string[]>>;
   /** Tab route names in the user's order; empty means the default order. */
   tabOrder: string[];
   setTabOrder: (order: string[]) => void;
@@ -82,7 +83,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ loaded, favourites, isFavourite, toggleFavourite, tabOrder, setTabOrder, reminderMinutes, setReminderMinutes, lastCategory, setLastCategory }),
+    () => ({ loaded, favourites, isFavourite, toggleFavourite, setFavourites, tabOrder, setTabOrder, reminderMinutes, setReminderMinutes, lastCategory, setLastCategory }),
     [loaded, favourites, isFavourite, toggleFavourite, tabOrder, reminderMinutes, lastCategory, setLastCategory],
   );
   return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;

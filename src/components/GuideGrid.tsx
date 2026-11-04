@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ScrollViewInstance } from 'react-native';
 import { isFiller } from '../epg/programme';
 import type { Channel, Programme, RegionKey } from '../epg/types';
@@ -7,6 +7,7 @@ import { usePreferences } from '../preferences/PreferencesContext';
 import { colors } from '../theme';
 import { atLocalHour, floorToHalfHour, formatDay, formatRange, formatTime } from '../time';
 import { useWatchlist } from '../watchlist/WatchlistContext';
+import { ArrangeableCell } from './ArrangeableCell';
 import { ChannelLogo } from './ChannelLogo';
 
 type Props = {
@@ -17,6 +18,12 @@ type Props = {
   to: number;
   now: number;
   onOpen: (channel: Channel, programme: Programme) => void;
+  /** Lets channels be held and dragged into a new order, or swiped away, instead of tapped (Favourites). */
+  arrange?: {
+    onReorder: (ids: string[]) => void;
+    /** Returns a function that undoes the removal. */
+    onRemove: (channel: Channel) => () => void;
+  };
 };
 
 type Metrics = { wide: boolean; channelW: number; rowH: number; pxPerMin: number; headerH: number };
@@ -29,6 +36,15 @@ const ROW_REDRAW = 4;
 // Where the quick jumps land, phone time.
 const TONIGHT_HOUR = 20;
 const TOMORROW_HOUR = 9;
+// While dragging a channel, how close to the list's edge starts it scrolling, and how fast.
+const DRAG_EDGE = 56;
+const DRAG_SCROLL_STEP = 8;
+
+const moved = <T,>(list: T[], from: number, to: number) => {
+  const out = [...list];
+  out.splice(to, 0, ...out.splice(from, 1));
+  return out;
+};
 
 function useMetrics(): Metrics {
   const { width } = useWindowDimensions();
@@ -38,25 +54,119 @@ function useMetrics(): Metrics {
     : { wide, channelW: 112, rowH: 64, pxPerMin: 4, headerH: 48 };
 }
 
-export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
+export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: Props) {
   const m = useMetrics();
   const { width: screenW, height: screenH } = useWindowDimensions();
   const headerRef = useRef<ScrollViewInstance>(null);
   const gridRef = useRef<ScrollViewInstance>(null);
   const [selectedId, setSelectedId] = useState(channels[0]?.id);
   const { isFavourite, toggleFavourite } = usePreferences();
-  const [toast, setToast] = useState<{ channel: Channel; added: boolean }>();
+  const [toast, setToast] = useState<{ icon: 'star' | 'star-outline'; text: string; undo?: () => void }>();
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
-  const toggleChannel = useCallback(
+  const showToast = useCallback((next: NonNullable<typeof toast>) => {
+    setToast(next);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(undefined), 3500);
+  }, []);
+
+  // Tapping only ever adds, so a stray tap can't lose a favourite.
+  const addChannel = useCallback(
     (channel: Channel) => {
-      setToast({ channel, added: !isFavourite(channel.id) });
+      if (isFavourite(channel.id)) {
+        showToast({ icon: 'star', text: `${channel.name} is in your favourites. Swipe it left there to remove it.` });
+        return;
+      }
       toggleFavourite(channel.id);
-      clearTimeout(toastTimer.current);
-      toastTimer.current = setTimeout(() => setToast(undefined), 3500);
+      showToast({ icon: 'star', text: `${channel.name} added to favourites`, undo: () => toggleFavourite(channel.id) });
     },
-    [isFavourite, toggleFavourite],
+    [isFavourite, toggleFavourite, showToast],
+  );
+
+  // Holding a channel to drag it: `dy` is how far it has travelled through the list.
+  const [drag, setDrag] = useState<{ id: string; start: number; dy: number }>();
+  const [listLocked, setListLocked] = useState(false);
+  const listBoxRef = useRef<ComponentRef<typeof View>>(null);
+  const listRef = useRef<ScrollViewInstance>(null);
+  const scrollY = useRef(0);
+  const listHeight = useRef(0);
+  const dragInfo = useRef({ fingerY: 0, fingerDy: 0, startScroll: 0, listTop: 0, timer: undefined as ReturnType<typeof setInterval> | undefined }).current;
+  useEffect(() => () => clearInterval(dragInfo.timer), [dragInfo]);
+
+  const targetRow = drag ? Math.min(channels.length - 1, Math.max(0, drag.start + Math.round(drag.dy / m.rowH))) : 0;
+  const rowsRef = useRef(channels);
+  rowsRef.current = drag ? moved(channels, drag.start, targetRow) : channels;
+  // Rows stay where they are in the list until the drag ends and only slide out of the way:
+  // moving the row under the finger would cancel the gesture.
+  const rowStyle = (i: number) => {
+    if (!drag) return undefined;
+    if (i === drag.start) return [styles.dragging, { transform: [{ translateY: drag.dy }] }];
+    if (i > drag.start && i <= targetRow) return { transform: [{ translateY: -m.rowH }] };
+    if (i < drag.start && i >= targetRow) return { transform: [{ translateY: m.rowH }] };
+    return undefined;
+  };
+  const channelCount = useRef(channels.length);
+  channelCount.current = channels.length;
+
+  const startDrag = useCallback(
+    (channel: Channel, pageY: number) => {
+      Object.assign(dragInfo, { fingerY: pageY, fingerDy: 0, startScroll: scrollY.current });
+      listBoxRef.current?.measureInWindow((_x, y) => {
+        dragInfo.listTop = y;
+      });
+      setListLocked(true);
+      setDrag({ id: channel.id, start: rowsRef.current.findIndex((c) => c.id === channel.id), dy: 0 });
+      // Scrolls the list when the finger is held near its top or bottom edge.
+      dragInfo.timer = setInterval(() => {
+        const nearTop = dragInfo.fingerY < dragInfo.listTop + DRAG_EDGE;
+        const nearBottom = dragInfo.fingerY > dragInfo.listTop + listHeight.current - DRAG_EDGE;
+        if (nearTop === nearBottom) return;
+        const max = Math.max(0, channelCount.current * m.rowH - listHeight.current + 28);
+        const next = Math.min(max, Math.max(0, scrollY.current + (nearTop ? -DRAG_SCROLL_STEP : DRAG_SCROLL_STEP)));
+        if (next === scrollY.current) return;
+        scrollY.current = next;
+        listRef.current?.scrollTo({ y: next, animated: false });
+        setDrag((d) => d && { ...d, dy: dragInfo.fingerDy + next - dragInfo.startScroll });
+      }, 32);
+    },
+    [dragInfo, m.rowH],
+  );
+  const moveDrag = useCallback(
+    (dy: number, pageY: number) => {
+      dragInfo.fingerDy = dy;
+      dragInfo.fingerY = pageY;
+      setDrag((d) => d && { ...d, dy: dy + scrollY.current - dragInfo.startScroll });
+    },
+    [dragInfo],
+  );
+  const endDrag = useCallback(
+    (commit: boolean) => {
+      clearInterval(dragInfo.timer);
+      if (commit) arrange?.onReorder(rowsRef.current.map((c) => c.id));
+      setDrag(undefined);
+      setListLocked(false);
+    },
+    [arrange, dragInfo],
+  );
+  const removeChannel = useCallback(
+    (channel: Channel) => {
+      if (!arrange) return;
+      showToast({ icon: 'star-outline', text: `${channel.name} removed from favourites`, undo: arrange.onRemove(channel) });
+    },
+    [arrange, showToast],
+  );
+  const moveChannelBy = useCallback(
+    (channel: Channel, step: number) => {
+      const index = rowsRef.current.findIndex((c) => c.id === channel.id);
+      arrange?.onReorder(moved(rowsRef.current, index, index + step).map((c) => c.id));
+    },
+    [arrange],
+  );
+  const showArrangeHint = useCallback(() => showToast({ icon: 'star', text: 'Hold a channel to move it, or swipe it left to remove it.' }), [showToast]);
+  const cellGestures = useMemo(
+    () => (arrange ? { startDrag, moveDrag, endDrag, removeChannel, moveChannelBy, showArrangeHint, setListLocked } : undefined),
+    [arrange, startDrag, moveDrag, endDrag, removeChannel, moveChannelBy, showArrangeHint],
   );
   // Left edge of the visible timeline, updated once scrolling settles. Titles of shows that
   // began off-screen slide right to stay readable, like a set-top box guide.
@@ -177,24 +287,45 @@ export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
       </View>
       <View style={styles.divider} />
 
+      <View
+        ref={listBoxRef}
+        style={styles.root}
+        onLayout={(e) => {
+          listHeight.current = e.nativeEvent.layout.height;
+        }}
+      >
       <ScrollView
+        ref={listRef}
         style={styles.root}
         contentContainerStyle={styles.gridContent}
+        scrollEnabled={!listLocked}
         scrollEventThrottle={32}
         onScroll={(e) => {
+          scrollY.current = e.nativeEvent.contentOffset.y;
           const row = Math.floor(e.nativeEvent.contentOffset.y / m.rowH);
           setTopRow((prev) => (Math.abs(prev - row) >= ROW_REDRAW ? row : prev));
         }}
       >
         <View style={styles.row}>
           <View style={{ width: m.channelW }}>
-            {channels.map((c, i) =>
-              i < firstDrawnRow || i > lastDrawnRow ? (
+            {channels.map((c, i) => {
+              return (i < firstDrawnRow || i > lastDrawnRow) && drag?.id !== c.id ? (
                 <View key={c.id} style={{ height: m.rowH }} />
               ) : (
-                <ChannelCell key={c.id} channel={c} selected={c.id === selectedId} favourite={isFavourite(c.id)} m={m} onToggle={toggleChannel} />
-              ),
-            )}
+                <View key={c.id} style={rowStyle(i)}>
+                  <ChannelCell
+                    channel={c}
+                    selected={c.id === selectedId}
+                    favourite={isFavourite(c.id)}
+                    m={m}
+                    onAdd={addChannel}
+                    gestures={cellGestures}
+                    canMoveUp={i > 0}
+                    canMoveDown={i < channels.length - 1}
+                  />
+                </View>
+              );
+            })}
           </View>
           <ScrollView
             ref={gridRef}
@@ -212,103 +343,146 @@ export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
             }}
           >
             <View style={{ width: totalW }}>
-              {channels.map((c, i) =>
-                i < firstDrawnRow || i > lastDrawnRow ? (
+              {channels.map((c, i) => {
+                return (i < firstDrawnRow || i > lastDrawnRow) && drag?.id !== c.id ? (
                   <View key={c.id} style={{ height: m.rowH }} />
                 ) : (
-                  <ProgrammeRow
-                    key={c.id}
-                    region={typeof region === 'function' ? region(c) : region}
-                    channel={c}
-                    selected={c.id === selectedId}
-                    now={now}
-                    from={from}
-                    to={to}
-                    drawFrom={drawFrom}
-                    drawTo={drawTo}
-                    viewX={viewX}
-                    m={m}
-                    onOpen={selectAndOpen}
-                  />
-                ),
-              )}
+                  <View key={c.id} style={rowStyle(i)}>
+                    <ProgrammeRow
+                      region={typeof region === 'function' ? region(c) : region}
+                      channel={c}
+                      selected={c.id === selectedId}
+                      now={now}
+                      from={from}
+                      to={to}
+                      drawFrom={drawFrom}
+                      drawTo={drawTo}
+                      viewX={viewX}
+                      m={m}
+                      onOpen={selectAndOpen}
+                    />
+                  </View>
+                );
+              })}
               <View pointerEvents="none" style={[styles.nowLine, { left: x(now) }]} />
             </View>
           </ScrollView>
         </View>
       </ScrollView>
+      </View>
 
       {toast && (
         <View style={styles.toast} accessibilityLiveRegion="polite">
-          <Ionicons name={toast.added ? 'star' : 'star-outline'} size={18} color={colors.coffee} />
-          <Text style={styles.toastText} numberOfLines={1}>
-            {toast.channel.name} {toast.added ? 'added to favourites' : 'removed from favourites'}
+          <Ionicons name={toast.icon} size={18} color={colors.coffee} />
+          <Text style={styles.toastText} numberOfLines={2}>
+            {toast.text}
           </Text>
-          <Pressable
-            onPress={() => {
-              toggleFavourite(toast.channel.id);
-              clearTimeout(toastTimer.current);
-              setToast(undefined);
-            }}
-            hitSlop={10}
-            accessibilityRole="button"
-          >
-            <Text style={styles.toastUndo}>Undo</Text>
-          </Pressable>
+          {toast.undo && (
+            <Pressable
+              onPress={() => {
+                toast.undo?.();
+                clearTimeout(toastTimer.current);
+                setToast(undefined);
+              }}
+              hitSlop={10}
+              accessibilityRole="button"
+            >
+              <Text style={styles.toastUndo}>Undo</Text>
+            </Pressable>
+          )}
         </View>
       )}
     </View>
   );
 }
 
+type CellGestures = {
+  startDrag: (channel: Channel, pageY: number) => void;
+  moveDrag: (dy: number, pageY: number) => void;
+  endDrag: (commit: boolean) => void;
+  removeChannel: (channel: Channel) => void;
+  moveChannelBy: (channel: Channel, step: number) => void;
+  showArrangeHint: () => void;
+  setListLocked: (locked: boolean) => void;
+};
+
 const ChannelCell = memo(function ChannelCell({
   channel,
   selected,
   favourite,
   m,
-  onToggle,
+  onAdd,
+  gestures,
+  canMoveUp,
+  canMoveDown,
 }: {
   channel: Channel;
   selected: boolean;
   favourite: boolean;
   m: Metrics;
-  onToggle: (channel: Channel) => void;
+  onAdd: (channel: Channel) => void;
+  gestures?: CellGestures;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
 }) {
   const star = (size: number) => <Ionicons name={favourite ? 'star' : 'star-outline'} size={size} color={favourite ? colors.coffee : colors.textDim} />;
   const nameStyle = [styles.channelName, selected && styles.selectedText];
+  const label = `Channel ${channel.number}, ${channel.name}${favourite ? ', favourite' : ''}`;
+  const content = m.wide ? (
+    <View style={styles.channelWide}>
+      <Text style={[styles.channelNumberWide, selected && styles.selectedText]}>{channel.number}</Text>
+      <ChannelLogo uri={channel.logo} crop={channel.lc} dark={!!channel.dl} name={channel.name} width={84} height={34} />
+      <Text style={[nameStyle, styles.channelNameWide]} numberOfLines={1}>
+        {channel.name}
+      </Text>
+      {star(15)}
+      {selected && <Ionicons name="play" size={16} color={colors.accent} />}
+    </View>
+  ) : (
+    <>
+      <View style={styles.channelTop}>
+        <Text style={[styles.channelNumber, selected && styles.selectedText]}>{channel.number}</Text>
+        <ChannelLogo uri={channel.logo} crop={channel.lc} dark={!!channel.dl} name={channel.name} width={62} height={24} />
+      </View>
+      <View style={styles.channelBottom}>
+        {selected && <Ionicons name="play" size={10} color={colors.accent} />}
+        {star(11)}
+        <Text style={nameStyle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+          {channel.name}
+        </Text>
+      </View>
+    </>
+  );
+
+  if (gestures) {
+    return (
+      <ArrangeableCell
+        width={m.channelW}
+        height={m.rowH}
+        label={label}
+        canMoveUp={canMoveUp}
+        canMoveDown={canMoveDown}
+        onTap={gestures.showArrangeHint}
+        onDragStart={(pageY) => gestures.startDrag(channel, pageY)}
+        onDragMove={gestures.moveDrag}
+        onDragEnd={gestures.endDrag}
+        onSwipeActive={gestures.setListLocked}
+        onRemove={() => gestures.removeChannel(channel)}
+        onMoveBy={(step) => gestures.moveChannelBy(channel, step)}
+      >
+        {content}
+      </ArrangeableCell>
+    );
+  }
   return (
     <Pressable
-      onPress={() => onToggle(channel)}
+      onPress={() => onAdd(channel)}
       style={[styles.channel, { height: m.rowH }]}
       accessibilityRole="button"
-      accessibilityLabel={`Channel ${channel.number}, ${channel.name}${favourite ? ', favourite' : ''}`}
-      accessibilityHint={favourite ? 'Removes from favourites' : 'Adds to favourites'}
+      accessibilityLabel={label}
+      accessibilityHint={favourite ? 'Already in your favourites' : 'Adds to favourites'}
     >
-      {m.wide ? (
-        <View style={styles.channelWide}>
-          <Text style={[styles.channelNumberWide, selected && styles.selectedText]}>{channel.number}</Text>
-          <ChannelLogo uri={channel.logo} crop={channel.lc} dark={!!channel.dl} name={channel.name} width={84} height={34} />
-          <Text style={[nameStyle, styles.channelNameWide]} numberOfLines={1}>
-            {channel.name}
-          </Text>
-          {star(15)}
-          {selected && <Ionicons name="play" size={16} color={colors.accent} />}
-        </View>
-      ) : (
-        <>
-          <View style={styles.channelTop}>
-            <Text style={[styles.channelNumber, selected && styles.selectedText]}>{channel.number}</Text>
-            <ChannelLogo uri={channel.logo} crop={channel.lc} dark={!!channel.dl} name={channel.name} width={62} height={24} />
-          </View>
-          <View style={styles.channelBottom}>
-            {selected && <Ionicons name="play" size={10} color={colors.accent} />}
-            {star(11)}
-            <Text style={nameStyle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
-              {channel.name}
-            </Text>
-          </View>
-        </>
-      )}
+      {content}
     </Pressable>
   );
 });
@@ -438,6 +612,7 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: colors.divider },
   gridContent: { paddingTop: 4, paddingBottom: 24 },
   row: { flexDirection: 'row' },
+  dragging: { zIndex: 10, elevation: 8, opacity: 0.92, backgroundColor: colors.surface },
   channel: { justifyContent: 'center', paddingHorizontal: 10 },
   channelTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   channelBottom: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },

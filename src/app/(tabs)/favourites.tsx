@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useCallback, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FavouritesPicker } from '../../components/FavouritesPicker';
@@ -16,8 +17,10 @@ import { colors } from '../../theme';
 import { floorToHalfHour, nowSeconds } from '../../time';
 import { useNow } from '../../useNow';
 
+const HINT_KEY = 'favourites-hint-done:v1';
+
 export default function FavouritesScreen() {
-  const { favourites } = usePreferences();
+  const { favourites, setFavourites } = usePreferences();
   const { guide: us, error: usError, refresh: refreshUs } = useGuide('us');
   const { guide: uk, error: ukError, refresh: refreshUk } = useGuide('uk');
   const now = useNow();
@@ -41,6 +44,39 @@ export default function FavouritesScreen() {
 
   const channels = useMemo(() => favourites.flatMap((id) => lookup.get(id)?.channel ?? []), [favourites, lookup]);
   const regionOf = useCallback((channel: Channel) => lookup.get(channel.id)?.region ?? 'us', [lookup]);
+
+  // Shown until they've moved or removed something, so they know it's possible.
+  const [hintDone, setHintDone] = useState(true);
+  useEffect(() => {
+    AsyncStorage.getItem(HINT_KEY)
+      .then((done) => setHintDone(!!done))
+      .catch(() => {});
+  }, []);
+  const finishHint = useCallback(() => {
+    setHintDone(true);
+    AsyncStorage.setItem(HINT_KEY, '1').catch(() => {});
+  }, []);
+
+  const arrange = useMemo(
+    () => ({
+      onReorder: (ids: string[]) => {
+        finishHint();
+        // Favourites missing from the listings right now keep their places around the moved ones.
+        const shown = new Set(ids);
+        setFavourites((current) => {
+          const inOrder = ids.values();
+          return current.map((id) => (shown.has(id) ? (inOrder.next().value ?? id) : id));
+        });
+      },
+      onRemove: (channel: Channel) => {
+        finishHint();
+        const index = favourites.indexOf(channel.id);
+        setFavourites((current) => current.filter((id) => id !== channel.id));
+        return () => setFavourites((current) => (current.includes(channel.id) ? current : [...current.slice(0, index), channel.id, ...current.slice(index)]));
+      },
+    }),
+    [favourites, setFavourites, finishHint],
+  );
 
   // Fixed per data load, so the grid doesn't shift under the user's thumb.
   const window = useMemo(() => {
@@ -87,15 +123,19 @@ export default function FavouritesScreen() {
           <Text style={styles.tip}>Tip: hold and drag any tab at the bottom to move it.</Text>
         </View>
       ) : (
-        <GuideGrid
-          key="favourites"
-          region={regionOf}
-          channels={channels}
-          from={window.from}
-          to={window.to}
-          now={now}
-          onOpen={(channel, programme) => setSelection({ channel, programme })}
-        />
+        <>
+          {!hintDone && <Text style={styles.hint}>Hold a channel to move it. Swipe it left to remove it.</Text>}
+          <GuideGrid
+            key="favourites"
+            region={regionOf}
+            channels={channels}
+            from={window.from}
+            to={window.to}
+            now={now}
+            onOpen={(channel, programme) => setSelection({ channel, programme })}
+            arrange={arrange}
+          />
+        </>
       )}
 
       <FavouritesPicker visible={picking} guides={guides} onClose={() => setPicking(false)} />
@@ -120,4 +160,5 @@ const styles = StyleSheet.create({
   addBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 12, marginTop: 10 },
   addText: { color: colors.background, fontSize: 16, fontWeight: '800' },
   tip: { color: colors.textDim, fontSize: 12, textAlign: 'center', marginTop: 14 },
+  hint: { color: colors.textDim, fontSize: 13, paddingHorizontal: 14, paddingBottom: 8 },
 });

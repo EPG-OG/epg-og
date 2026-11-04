@@ -60,4 +60,4 @@ npm run epg
 
 - Apple and tipping: the US App Store allows external payment links, but other storefronts may reject an external "tip" link. A fallback is an in-app-purchase tip jar.
 - Channel logos are the broadcasters' trademarks. They're shown for identification only, and the About text in the Coffee tab says so.
-- `assets/icon-source.png` is the original artwork; `icon.png` and `adaptive-icon.png` are generated from it.
+- `assets/icon-source.png` is the original artwork. `adaptive-icon.png`, `icon.png` and `favicon.png` use its letters, enlarged and brightened, on a redrawn sky and grid. Changing the icon needs a new APK.

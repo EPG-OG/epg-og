@@ -33,7 +33,7 @@
 
 ## 🆕 What's new
 
-- **Favourites:** tap any channel's name to add it to your own guide, with USA and UK channels side by side.
+- **Favourites:** tap any channel's name to add it to your own guide, with USA and UK channels side by side. Hold and drag to put them in any order, and swipe left to remove one.
 - **Move your tabs:** hold and drag a tab at the bottom to put it where you want it.
 - **Now, Tonight, Tomorrow:** jump straight there. The guide now runs two days ahead.
 - **Show artwork** in the details of nearly every show, and paid programming is dimmed so real shows stand out.
@@ -56,7 +56,7 @@ Turn your phone sideways or use a tablet, and you get the full TV-style grid.
 ## Features
 
 - 📺 **USA and UK guides**, each split into Sports, Entertainment, News, Movies, Kids, Documentary and Music, plus Spanish (USA), South Asian (UK) and All Channels
-- ⭐ **Favourites.** Tap a channel's name to add it to your own guide, and drag the tabs into the order you like
+- ⭐ **Favourites.** Tap a channel's name to add it to your own guide, hold and drag to reorder, swipe left to remove. You can drag the tabs into the order you like too
 - 🔁 **Follow shows and sports.** Tap "Follow this show", or follow a keyword like *NASCAR*, *NFL* or *Premier League*, and every new airing is added to your watchlist with a reminder
 - 🔎 **Search** shows, teams and channels across the USA and UK
 - 🔖 **Watchlist with reminders.** Tap the bookmark on any upcoming show and get a notification 5, 15 or 30 minutes before it starts
