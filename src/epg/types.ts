@@ -10,6 +10,7 @@ export type Programme = {
   c?: string; // category
   n?: 1; // new / premiere
   l?: 1; // live
+  i?: string; // artwork: an image id or full URL (see programme.ts)
 };
 
 /** Visible area of a padded logo image: [x, y, width, height, imageWidth, imageHeight] in pixels. */

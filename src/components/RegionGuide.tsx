@@ -4,21 +4,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GUIDE_HOURS_AHEAD, GUIDE_HOURS_BACK } from '../config';
 import type { Channel, Programme, RegionKey } from '../epg/types';
 import { useGuide } from '../epg/useGuide';
+import { usePreferences } from '../preferences/PreferencesContext';
 import { colors } from '../theme';
 import { floorToHalfHour, nowSeconds } from '../time';
 import { useNow } from '../useNow';
 import { CategoryBar } from './CategoryBar';
 import { GuideGrid } from './GuideGrid';
 import { HeaderActions } from './HeaderActions';
+import { ListingsMessage } from './ListingsMessage';
 import { ProgrammeSheet } from './ProgrammeSheet';
 import { UpdateBanner } from './UpdateBanner';
 
 const ALL = 'all';
 
 export function RegionGuide({ region, title }: { region: RegionKey; title: string }) {
-  const { guide, error } = useGuide(region);
+  const { guide, error, refresh } = useGuide(region);
   const now = useNow();
-  const [category, setCategory] = useState('sports');
+  const { loaded, lastCategory, setLastCategory } = usePreferences();
   const [selection, setSelection] = useState<{ channel: Channel; programme: Programme }>();
 
   // The window is fixed per data load so the grid doesn't shift under the user's thumb.
@@ -33,6 +35,10 @@ export function RegionGuide({ region, title }: { region: RegionKey; title: strin
     () => [...(guide?.categories ?? []).map(({ id, name }) => ({ id, name })), { id: ALL, name: 'All Channels' }],
     [guide],
   );
+
+  // A saved category may no longer exist if the line-up has changed.
+  const saved = lastCategory[region];
+  const category = saved && tabs.some((t) => t.id === saved) ? saved : 'sports';
 
   const channels = useMemo(() => {
     if (!guide) return [];
@@ -50,16 +56,19 @@ export function RegionGuide({ region, title }: { region: RegionKey; title: strin
         </View>
       </View>
       <UpdateBanner />
-      <CategoryBar categories={tabs} selected={category} onSelect={setCategory} />
+      {/* Redrawn when the categories arrive, so it can scroll to the selected one. */}
+      <CategoryBar key={tabs.length} categories={tabs} selected={category} onSelect={(id) => setLastCategory(region, id)} />
 
-      {!guide || !window ? (
-        <View style={styles.center}>
-          {error ? <Text style={styles.message}>Couldn't load listings.{'\n'}{error}</Text> : <ActivityIndicator color={colors.accent} />}
-        </View>
+      {!guide || !window || !loaded ? (
+        error ? (
+          <ListingsMessage message="Couldn't load the listings. Check your connection and try again." onRetry={refresh} />
+        ) : (
+          <View style={styles.center}>
+            <ActivityIndicator color={colors.accent} />
+          </View>
+        )
       ) : window.to <= now ? (
-        <View style={styles.center}>
-          <Text style={styles.message}>These listings are out of date. Check your connection and reopen the app.</Text>
-        </View>
+        <ListingsMessage message="These listings are out of date. Check your connection and try again." onRetry={refresh} />
       ) : (
         <GuideGrid
           key={`${region}:${category}`}
@@ -84,5 +93,4 @@ const styles = StyleSheet.create({
   subtitle: { color: colors.textDim, fontSize: 15, fontWeight: '600' },
   actions: { marginLeft: 'auto', alignSelf: 'center', padding: 4 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  message: { color: colors.textDim, fontSize: 15, textAlign: 'center', lineHeight: 22 },
 });

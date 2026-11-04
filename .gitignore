@@ -36,8 +36,9 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# raw XMLTV downloads (scripts/build-epg.mjs)
+# raw XMLTV downloads and local output (scripts/build-epg.mjs)
 .epg-cache/
+/epg/
 _site/
 
 # generated native folders

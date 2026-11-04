@@ -17,3 +17,11 @@ export function formatDuration(seconds: number) {
 }
 
 export const floorToHalfHour = (unix: number) => unix - (unix % 1800);
+
+/** The given hour, phone time, `daysAhead` days after `unix`. */
+export function atLocalHour(unix: number, daysAhead: number, hour: number) {
+  const d = new Date(unix * 1000);
+  d.setDate(d.getDate() + daysAhead);
+  d.setHours(hour, 0, 0, 0);
+  return Math.floor(d.getTime() / 1000);
+}

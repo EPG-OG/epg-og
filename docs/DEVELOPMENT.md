@@ -51,7 +51,8 @@ npm run epg
 - **Logos:** the app's background is dark, so `scripts/dark-logos.json` maps channels to official dark-background logos (re-run `node scripts/find-dark-logos.mjs` after adding US channels). Anything still too dark gets a light backing, flagged `dl` in the JSON, and generic placeholder images are replaced by the channel name.
 - **Change channels or categories:** edit `scripts/lineup.mjs`. Channel IDs come from the matching `.txt` list on epgshare01, and the script warns about any ID it can't find. Pushing the change updates the hosted listings within minutes.
 - The listings workflow also re-enables itself on every scheduled run, so GitHub's 60-day inactivity pause never kicks in.
-- `EPG_BASE_URL` in `src/config.ts` points at `https://epgog.com`. If it can't be reached, the app falls back to the snapshot bundled from `epg/`.
+- `EPG_BASE_URL` in `src/config.ts` points at `https://epgog.com`. The app saves each download on the phone and doesn't download again until that copy is 6 hours old, when a newer one should exist. If the site can't be reached, it keeps using the saved copy.
+- **Artwork:** each show's `i` field is an image id or URL, which `src/epg/programme.ts` turns into a URL for the details sheet. Paid programming is matched by title in the same file and dimmed in the guide.
 
 ## Notes
 

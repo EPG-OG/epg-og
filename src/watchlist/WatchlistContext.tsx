@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { AppState } from 'react-native';
 import { fetchGuide, REFRESH_MS } from '../epg/useGuide';
 import type { Channel, LogoCrop, Programme, RegionKey } from '../epg/types';
+import { usePreferences } from '../preferences/PreferencesContext';
 import { nowSeconds } from '../time';
 import { findAirings, followRegions, MAX_AUTO_ITEMS, normalize, type Follow } from './follows';
 import { cancelReminder, ensureReminderPermission, scheduleReminder } from './reminders';
@@ -70,8 +71,13 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<WatchItem[]>([]);
   const [follows, setFollows] = useState<Follow[]>([]);
   const [skipped, setSkipped] = useState<string[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [listLoaded, setLoaded] = useState(false);
+  const { loaded: preferencesLoaded, reminderMinutes } = usePreferences();
+  // Nothing is scheduled until the saved reminder time is known.
+  const loaded = listLoaded && preferencesLoaded;
 
+  const minutesRef = useRef(reminderMinutes);
+  minutesRef.current = reminderMinutes;
   const itemsRef = useRef(items);
   itemsRef.current = items;
   const followsRef = useRef(follows);
@@ -112,25 +118,62 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
   const keys = useMemo(() => new Set(items.map((i) => i.key)), [items]);
   const isSaved = useCallback((channelId: string, start: number) => keys.has(keyOf(channelId, start)), [keys]);
 
-  /** Adds items to the list, then schedules their reminders (permission was asked when following). */
-  const addWithReminders = useCallback(async (added: WatchItem[]) => {
-    setItems((prev) => [...prev, ...added].sort(byStart));
-    for (const item of added) {
-      const reminderId = await scheduleReminder({
-        title: item.title,
-        channelName: item.channelName,
-        channelNumber: item.channelNumber,
-        start: item.s,
-      }).catch(() => undefined);
-      if (!reminderId) continue;
-      // Removed again while scheduling: don't leave an orphaned reminder.
-      if (!itemsRef.current.some((i) => i.key === item.key)) {
-        await cancelReminder(reminderId);
-        continue;
-      }
-      setItems((prev) => prev.map((i) => (i.key === item.key ? { ...i, reminderId } : i)));
+  const attachReminder = useCallback(async (item: WatchItem) => {
+    const reminderId = await scheduleReminder({
+      title: item.title,
+      channelName: item.channelName,
+      channelNumber: item.channelNumber,
+      start: item.s,
+      minutesBefore: minutesRef.current,
+    }).catch(() => undefined);
+    // Removed again while scheduling: don't leave an orphaned reminder.
+    if (reminderId && !itemsRef.current.some((i) => i.key === item.key)) {
+      await cancelReminder(reminderId);
+      return;
     }
+    setItems((prev) => prev.map((i) => (i.key === item.key ? { ...i, reminderId } : i)));
   }, []);
+
+  /** Adds items to the list, then schedules their reminders (permission was asked when following). */
+  const addWithReminders = useCallback(
+    async (added: WatchItem[]) => {
+      setItems((prev) => [...prev, ...added].sort(byStart));
+      for (const item of added) await attachReminder(item);
+    },
+    [attachReminder],
+  );
+
+  // Moves the reminders already scheduled when the reminder time changes. One pass runs at a
+  // time, and it goes round again if the time was changed part-way through.
+  const scheduledFor = useRef<number>(undefined);
+  const rescheduling = useRef(false);
+  const reschedule = useCallback(async () => {
+    if (rescheduling.current) return;
+    rescheduling.current = true;
+    try {
+      while (scheduledFor.current !== minutesRef.current) {
+        scheduledFor.current = minutesRef.current;
+        for (const { key } of [...itemsRef.current]) {
+          // Read afresh: the last pass may have replaced this item's reminder.
+          const item = itemsRef.current.find((i) => i.key === key);
+          if (!item || item.s <= nowSeconds()) continue;
+          await cancelReminder(item.reminderId);
+          await attachReminder(item);
+          // Lets the new reminder id reach itemsRef before anything reads it again.
+          await new Promise((resolve) => setTimeout(resolve));
+        }
+      }
+    } finally {
+      rescheduling.current = false;
+    }
+  }, [attachReminder]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    // The first value is the saved setting, which the reminders already match.
+    if (scheduledFor.current === undefined) scheduledFor.current = reminderMinutes;
+    else reschedule();
+  }, [loaded, reminderMinutes, reschedule]);
 
   // Adds upcoming airings of every followed show that aren't on the watchlist yet.
   const syncing = useRef(false);

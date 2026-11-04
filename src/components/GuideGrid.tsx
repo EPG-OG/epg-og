@@ -1,10 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ScrollViewInstance } from 'react-native';
+import { isFiller } from '../epg/programme';
 import type { Channel, Programme, RegionKey } from '../epg/types';
 import { usePreferences } from '../preferences/PreferencesContext';
 import { colors } from '../theme';
-import { floorToHalfHour, formatDay, formatRange, formatTime } from '../time';
+import { atLocalHour, floorToHalfHour, formatDay, formatRange, formatTime } from '../time';
 import { useWatchlist } from '../watchlist/WatchlistContext';
 import { ChannelLogo } from './ChannelLogo';
 
@@ -25,6 +26,9 @@ const GAP = 4;
 // Rows beyond the screen to keep ready, and how far to scroll before redrawing (rows must stay smaller).
 const ROW_OVERSCAN = 8;
 const ROW_REDRAW = 4;
+// Where the quick jumps land, phone time.
+const TONIGHT_HOUR = 20;
+const TOMORROW_HOUR = 9;
 
 function useMetrics(): Metrics {
   const { width } = useWindowDimensions();
@@ -57,6 +61,7 @@ export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
   // Left edge of the visible timeline, updated once scrolling settles. Titles of shows that
   // began off-screen slide right to stay readable, like a set-top box guide.
   const [viewX, setViewX] = useState(0);
+  const scrollX = useRef(0);
   const settleTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   // Where drawing is centred: the top row and left edge, updated in steps while scrolling.
   const [topRow, setTopRow] = useState(0);
@@ -75,17 +80,36 @@ export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
     return out;
   }, [from, to]);
 
-  const jumpToNow = useCallback(
-    (animated = true) => {
-      // Keep at least ~10 minutes of context left of the now-line.
-      const target = Math.max(0, x(floorToHalfHour(now - 600)));
+  const scrollToTime = useCallback(
+    (t: number, animated: boolean) => {
+      const target = Math.max(0, x(t));
       gridRef.current?.scrollTo({ x: target, animated });
       headerRef.current?.scrollTo({ x: target, animated });
+      scrollX.current = target;
       setViewX(target);
       setDrawX(target);
     },
-    [x, now, m.wide],
+    [x],
   );
+
+  // Keep at least ~10 minutes of context left of the now-line.
+  const nowTarget = floorToHalfHour(now - 600);
+
+  // Only short trips animate: shows far from where the guide is drawn would slide past blank.
+  const jump = (t: number) => scrollToTime(t, Math.abs(x(t) - scrollX.current) < screenW);
+
+  const viewTime = from + (viewX / m.pxPerMin) * 60;
+  const tonight = atLocalHour(now, 0, TONIGHT_HOUR);
+  const tomorrow = atLocalHour(now, 1, 0);
+  const tomorrowMorning = atLocalHour(now, 1, TOMORROW_HOUR);
+  const showTonight = tonight > nowTarget + 1800 && tonight < to;
+  const activeJump =
+    viewTime >= tomorrow ? 'tomorrow' : showTonight && viewTime >= tonight - 900 ? 'tonight' : Math.abs(viewTime - nowTarget) < 3600 ? 'now' : undefined;
+  const jumps = [
+    { id: 'now', label: 'Now', onPress: () => jump(nowTarget) },
+    ...(showTonight ? [{ id: 'tonight', label: 'Tonight', onPress: () => jump(tonight) }] : []),
+    ...(tomorrowMorning < to ? [{ id: 'tomorrow', label: 'Tomorrow', onPress: () => jump(tomorrowMorning) }] : []),
+  ];
 
   // Open on the current half hour, like a set-top box guide. Done once the grid has laid out
   // (a scrollTo before that is ignored), and again if the scale changes on rotation.
@@ -93,7 +117,7 @@ export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
   const openOnNow = () => {
     if (opened.current) return;
     opened.current = true;
-    jumpToNow(false);
+    scrollToTime(nowTarget, false);
   };
   useEffect(() => {
     opened.current = false;
@@ -109,15 +133,33 @@ export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
 
   return (
     <View style={styles.root}>
+      <View style={styles.jumps}>
+        {jumps.map((j) => {
+          const active = j.id === activeJump;
+          return (
+            <Pressable
+              key={j.id}
+              onPress={j.onPress}
+              hitSlop={6}
+              style={[styles.jump, active && styles.jumpActive]}
+              accessibilityRole="button"
+              accessibilityLabel={`Jump to ${j.label.toLowerCase()}`}
+              accessibilityState={{ selected: active }}
+            >
+              <Text style={[styles.jumpText, active && styles.jumpTextActive]}>{j.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
       <View style={[styles.header, { height: m.headerH }]}>
-        <Pressable onPress={() => jumpToNow()} style={[styles.clock, { width: m.channelW }]} accessibilityLabel="Jump to now">
+        <Pressable onPress={() => jump(nowTarget)} style={[styles.clock, { width: m.channelW }]} accessibilityLabel="Jump to now">
           {m.wide ? (
             <Text style={styles.clockWide}>
-              {formatDay(now)}, {formatTime(now)}
+              {formatDay(Math.max(viewTime, now))}, {formatTime(now)}
             </Text>
           ) : (
             <>
-              <Text style={styles.clockDay}>{formatDay(now)}</Text>
+              <Text style={styles.clockDay}>{formatDay(Math.max(viewTime, now))}</Text>
               <Text style={styles.clockTime}>{formatTime(now)}</Text>
             </>
           )}
@@ -162,6 +204,7 @@ export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
             onContentSizeChange={(w) => w > 0 && openOnNow()}
             onScroll={(e) => {
               const offset = e.nativeEvent.contentOffset.x;
+              scrollX.current = offset;
               headerRef.current?.scrollTo({ x: offset, animated: false });
               setDrawX((prev) => (Math.abs(prev - offset) >= screenW / 2 ? offset : prev));
               clearTimeout(settleTimer.current);
@@ -309,12 +352,13 @@ const ProgrammeRow = memo(function ProgrammeRow({
 
         const airing = p.s <= now && now < p.e;
         const past = p.e <= now;
-        const state = selected && airing ? 'now' : p === next ? 'next' : past ? 'past' : 'normal';
+        const filler = isFiller(p);
+        const state = selected && airing ? 'now' : p === next ? 'next' : past || filler ? 'past' : 'normal';
         const onLight = state === 'now';
         const showMeta = !m.wide && width > 70;
         const saved = isSaved(channel.id, p.s);
         // One-tap watchlist toggle on anything that hasn't started yet (and on saved shows, so they can be removed).
-        const showSave = width > 84 && (p.s > now || saved);
+        const showSave = width > 84 && ((p.s > now && !filler) || saved);
         const inset = Math.max(0, Math.min(viewX - left, width - (showSave ? 130 : 96)));
 
         return (
@@ -347,7 +391,7 @@ const ProgrammeRow = memo(function ProgrammeRow({
             <View style={styles.titleRow}>
               <Text
                 numberOfLines={1}
-                style={[styles.title, m.wide && styles.titleWide, onLight && styles.titleOnLight, past && styles.titlePast]}
+                style={[styles.title, m.wide && styles.titleWide, onLight && styles.titleOnLight, !onLight && (past || filler) && styles.titlePast]}
               >
                 {p.t}
               </Text>
@@ -378,6 +422,11 @@ const cellBg = StyleSheet.create({
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  jumps: { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingBottom: 6 },
+  jump: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 14, borderWidth: 1, borderColor: colors.divider },
+  jumpActive: { borderColor: colors.accent },
+  jumpText: { color: colors.textDim, fontSize: 13, fontWeight: '600' },
+  jumpTextActive: { color: colors.accent },
   header: { flexDirection: 'row' },
   clock: { justifyContent: 'center', paddingLeft: 12 },
   clockWide: { color: colors.accent, fontSize: 22, fontWeight: '600' },

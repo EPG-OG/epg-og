@@ -2,7 +2,6 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { formatTime } from '../time';
 
-export const REMINDER_MINUTES = 5;
 const CHANNEL_ID = 'show-reminders';
 
 // Local notifications only exist on iOS/Android; on web the watchlist still works without them.
@@ -36,16 +35,16 @@ export async function ensureReminderPermission(): Promise<boolean> {
   return (await Notifications.requestPermissionsAsync()).granted;
 }
 
-type ReminderInput = { title: string; channelName: string; channelNumber: number; start: number };
+type ReminderInput = { title: string; channelName: string; channelNumber: number; start: number; minutesBefore: number };
 
-/** Schedules a reminder REMINDER_MINUTES before `start`. Returns the notification id, or undefined if none was scheduled. */
-export async function scheduleReminder({ title, channelName, channelNumber, start }: ReminderInput) {
+/** Schedules a reminder `minutesBefore` `start`. Returns the notification id, or undefined if none was scheduled. */
+export async function scheduleReminder({ title, channelName, channelNumber, start, minutesBefore }: ReminderInput) {
   const nowMs = Date.now();
   if (start * 1000 <= nowMs + 10_000) return undefined; // already started
   if (!(await ensureReminderPermission())) return undefined;
 
   // If the show starts within the reminder window, remind at least a few seconds from now.
-  const fireAt = Math.max(start * 1000 - REMINDER_MINUTES * 60_000, nowMs + 5_000);
+  const fireAt = Math.max(start * 1000 - minutesBefore * 60_000, nowMs + 5_000);
   const minutes = Math.max(1, Math.round((start * 1000 - fireAt) / 60_000));
   return Notifications.scheduleNotificationAsync({
     content: {

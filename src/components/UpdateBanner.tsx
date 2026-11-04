@@ -22,8 +22,10 @@ export function isNewer(a: string, b: string) {
   return false;
 }
 
-// Checked once per app launch and shared by both guide tabs.
+// Checked once per app launch and shared by every tab showing the banner.
 let check: Promise<LatestRelease | undefined> | undefined;
+// Hidden tabs stay mounted, so dismissing on one tab has to clear the others.
+const dismissers = new Set<() => void>();
 
 async function findUpdate(): Promise<LatestRelease | undefined> {
   const current = Constants.expoConfig?.version;
@@ -44,12 +46,17 @@ export function UpdateBanner() {
     if (!showUpdateBanner) return;
     check ??= findUpdate().catch(() => undefined);
     check.then(setLatest);
+    const clear = () => setLatest(undefined);
+    dismissers.add(clear);
+    return () => {
+      dismissers.delete(clear);
+    };
   }, []);
 
   if (!latest) return null;
 
   const dismiss = () => {
-    setLatest(undefined);
+    dismissers.forEach((clear) => clear());
     check = Promise.resolve(undefined);
     AsyncStorage.setItem(DISMISSED_KEY, latest.version).catch(() => {});
   };

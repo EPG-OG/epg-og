@@ -5,7 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FavouritesPicker } from '../../components/FavouritesPicker';
 import { GuideGrid } from '../../components/GuideGrid';
 import { HeaderActions } from '../../components/HeaderActions';
+import { ListingsMessage } from '../../components/ListingsMessage';
 import { ProgrammeSheet } from '../../components/ProgrammeSheet';
+import { UpdateBanner } from '../../components/UpdateBanner';
 import { GUIDE_HOURS_AHEAD, GUIDE_HOURS_BACK } from '../../config';
 import type { Channel, Programme, RegionKey } from '../../epg/types';
 import { useGuide } from '../../epg/useGuide';
@@ -16,9 +18,13 @@ import { useNow } from '../../useNow';
 
 export default function FavouritesScreen() {
   const { favourites } = usePreferences();
-  const { guide: us } = useGuide('us');
-  const { guide: uk } = useGuide('uk');
+  const { guide: us, error: usError, refresh: refreshUs } = useGuide('us');
+  const { guide: uk, error: ukError, refresh: refreshUk } = useGuide('uk');
   const now = useNow();
+  const retry = () => {
+    refreshUs();
+    refreshUk();
+  };
   const [picking, setPicking] = useState(false);
   const [selection, setSelection] = useState<{ channel: Channel; programme: Programme }>();
 
@@ -58,11 +64,18 @@ export default function FavouritesScreen() {
           <HeaderActions />
         </View>
       </View>
+      <UpdateBanner />
 
       {!window ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.accent} />
-        </View>
+        usError && ukError ? (
+          <ListingsMessage message="Couldn't load the listings. Check your connection and try again." onRetry={retry} />
+        ) : (
+          <View style={styles.center}>
+            <ActivityIndicator color={colors.accent} />
+          </View>
+        )
+      ) : favourites.length > 0 && window.to <= now ? (
+        <ListingsMessage message="These listings are out of date. Check your connection and try again." onRetry={retry} />
       ) : favourites.length === 0 ? (
         <View style={styles.center}>
           <Ionicons name="star-outline" size={48} color={colors.divider} />

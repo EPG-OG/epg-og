@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import { BUY_ME_A_COFFEE_URL } from '../../config';
@@ -14,6 +14,17 @@ import { formatDay, formatTime } from '../../time';
 export default function CoffeeScreen() {
   const { guide } = useGuide('us');
   const { tabOrder, setTabOrder } = usePreferences();
+
+  const reportBody = [
+    "What went wrong? (What you tapped, which channel or show, and what happened)",
+    '',
+    '',
+    '---',
+    `EPG OG ${Constants.expoConfig?.version}`,
+    `${Platform.OS} ${Platform.Version}`,
+    ...(guide ? [`Listings from ${formatDay(guide.generatedAt)}, ${formatTime(guide.generatedAt)}`] : []),
+  ].join('\n');
+  const reportUrl = `mailto:support@epgog.com?subject=${encodeURIComponent('EPG OG problem report')}&body=${encodeURIComponent(reportBody)}`;
 
   return (
     <SafeAreaView edges={['top']} style={styles.root}>
@@ -71,6 +82,19 @@ export default function CoffeeScreen() {
           )}
         </View>
 
+        <View style={styles.about}>
+          <Text style={styles.aboutTitle}>Something not working?</Text>
+          <Text style={styles.aboutText}>This opens your email app with the app version already filled in. Nothing is sent until you press send.</Text>
+          <Pressable
+            onPress={() => Linking.openURL(reportUrl).catch(() => {})}
+            style={({ pressed }) => [styles.report, pressed && { opacity: 0.85 }]}
+            accessibilityRole="button"
+          >
+            <Ionicons name="mail-outline" size={18} color={colors.accent} />
+            <Text style={styles.reportText}>Report a problem</Text>
+          </Pressable>
+        </View>
+
         <View style={styles.official}>
           <Ionicons name="shield-checkmark" size={20} color={colors.accent} />
           <View style={styles.officialBody}>
@@ -120,6 +144,17 @@ const styles = StyleSheet.create({
   about: { marginTop: 40, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.divider, alignSelf: 'stretch', gap: 10 },
   aboutTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
   aboutText: { color: colors.textDim, fontSize: 13, lineHeight: 19 },
+  report: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 11,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.accent,
+  },
+  reportText: { color: colors.accent, fontSize: 15, fontWeight: '700' },
   official: {
     flexDirection: 'row',
     gap: 12,

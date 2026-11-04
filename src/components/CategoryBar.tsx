@@ -1,4 +1,5 @@
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { useRef } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, type ScrollViewInstance } from 'react-native';
 import { colors } from '../theme';
 
 type Props = {
@@ -8,14 +9,17 @@ type Props = {
 };
 
 export function CategoryBar({ categories, selected, onSelect }: Props) {
+  const barRef = useRef<ScrollViewInstance>(null);
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bar} style={styles.scroll}>
+    <ScrollView ref={barRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bar} style={styles.scroll}>
       {categories.map((c) => {
         const active = c.id === selected;
         return (
           <Pressable
             key={c.id}
             onPress={() => onSelect(c.id)}
+            // A remembered category can be off to the side when the guide opens.
+            onLayout={active ? (e) => barRef.current?.scrollTo({ x: Math.max(0, e.nativeEvent.layout.x - 12), animated: false }) : undefined}
             style={[styles.chip, active && styles.chipActive]}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}

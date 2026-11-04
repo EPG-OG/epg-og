@@ -4,14 +4,16 @@ import { Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChannelLogo } from '../components/ChannelLogo';
 import { FollowingPanel } from '../components/FollowingPanel';
+import { REMINDER_OPTIONS, usePreferences } from '../preferences/PreferencesContext';
 import { colors } from '../theme';
 import { formatDay, formatRange } from '../time';
 import { useNow } from '../useNow';
-import { REMINDER_MINUTES, remindersSupported } from '../watchlist/reminders';
+import { remindersSupported } from '../watchlist/reminders';
 import { useWatchlist, type WatchItem } from '../watchlist/WatchlistContext';
 
 export default function WatchlistScreen() {
   const { items, remove, follows } = useWatchlist();
+  const { reminderMinutes, setReminderMinutes } = usePreferences();
   const now = useNow();
   const upcoming = items.filter((i) => i.e > now);
 
@@ -36,12 +38,27 @@ export default function WatchlistScreen() {
         </Pressable>
         <Text style={styles.title}>Watchlist</Text>
       </View>
-      {remindersSupported && upcoming.length > 0 && (
-        <Text style={styles.hint}>
-          <Ionicons name="notifications-outline" size={13} color={colors.textDim} /> You'll get a notification {REMINDER_MINUTES} min
-          before each show starts.
-        </Text>
-      )}
+      <View style={styles.reminderRow}>
+        <Ionicons name="notifications-outline" size={15} color={colors.textDim} />
+        <Text style={styles.hint}>Remind me</Text>
+        {REMINDER_OPTIONS.map((minutes) => {
+          const active = minutes === reminderMinutes;
+          return (
+            <Pressable
+              key={minutes}
+              onPress={() => setReminderMinutes(minutes)}
+              hitSlop={6}
+              style={[styles.reminderChip, active && styles.reminderChipActive]}
+              accessibilityRole="radio"
+              accessibilityLabel={`Remind me ${minutes} minutes before`}
+              accessibilityState={{ selected: active }}
+            >
+              <Text style={[styles.reminderText, active && styles.reminderTextActive]}>{minutes} min</Text>
+            </Pressable>
+          );
+        })}
+        <Text style={styles.hint}>before</Text>
+      </View>
       <SectionList
         sections={sections}
         keyExtractor={(i) => i.key}
@@ -98,7 +115,12 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   titleBar: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 4 },
   title: { color: colors.text, fontSize: 26, fontWeight: '800' },
-  hint: { color: colors.textDim, fontSize: 13, paddingHorizontal: 14, paddingBottom: 6 },
+  reminderRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingTop: 4, paddingBottom: 8 },
+  hint: { color: colors.textDim, fontSize: 13 },
+  reminderChip: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 12, borderWidth: 1, borderColor: colors.divider },
+  reminderChipActive: { borderColor: colors.accent },
+  reminderText: { color: colors.textDim, fontSize: 12, fontWeight: '600' },
+  reminderTextActive: { color: colors.accent },
   list: { paddingHorizontal: 12, paddingBottom: 24, flexGrow: 1 },
   day: { color: colors.accent, fontSize: 13, fontWeight: '700', marginTop: 16, marginBottom: 6, marginLeft: 2 },
   row: {

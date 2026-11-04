@@ -119,6 +119,13 @@ function httpsLogo(src) {
   return src?.replace(/^http:\/\//, 'https://');
 }
 
+// Most artwork lives on two hosts; storing just the image id keeps the JSON small (see src/epg/programme.ts).
+function artworkId(src) {
+  if (!src || src.includes('/generic/')) return undefined;
+  const url = httpsLogo(src);
+  return url.match(/^https:\/\/dtil\.tmsimg\.com\/assets\/([^.?/]+)\.jpg/)?.[1] ?? url.match(/^https:\/\/images\.metadata\.sky\.com\/pd-image\/([0-9a-f-]{36})\//i)?.[1] ?? url;
+}
+
 function parseFeed(xml, wanted, from, to) {
   const channels = new Map();
   for (const m of xml.matchAll(/<channel id="([^"]+)">([\s\S]*?)<\/channel>/g)) {
@@ -150,6 +157,9 @@ function parseFeed(xml, wanted, from, to) {
     if (categories[0]) p.c = categories[categories.length > 1 && categories[0].includes('&') ? 1 : 0];
     if (isNew) p.n = 1;
     if (isLive) p.l = 1;
+    const icon = body.match(/<icon src="([^"]+)"/);
+    const artwork = icon && artworkId(decode(icon[1]));
+    if (artwork) p.i = artwork;
 
     if (!programmes.has(a.channel)) programmes.set(a.channel, []);
     programmes.get(a.channel).push(p);

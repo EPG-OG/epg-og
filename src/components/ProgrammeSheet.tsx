@@ -1,11 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Image } from 'expo-image';
+import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { artworkUrl } from '../epg/programme';
 import type { Channel, Programme, RegionKey } from '../epg/types';
 import { usePreferences } from '../preferences/PreferencesContext';
 import { colors } from '../theme';
 import { formatDay, formatDuration, formatRange } from '../time';
-import { REMINDER_MINUTES, remindersSupported } from '../watchlist/reminders';
+import { remindersSupported } from '../watchlist/reminders';
 import { useWatchlist } from '../watchlist/WatchlistContext';
 import { ChannelLogo } from './ChannelLogo';
 
@@ -19,7 +22,7 @@ type Props = {
 export function ProgrammeSheet({ region, selection, now, onClose }: Props) {
   const insets = useSafeAreaInsets();
   const { isSaved, toggle, findFollow, follow, unfollow } = useWatchlist();
-  const { isFavourite, toggleFavourite } = usePreferences();
+  const { isFavourite, toggleFavourite, reminderMinutes } = usePreferences();
   const { channel, programme: p } = selection ?? {};
   const followed = p ? findFollow('title', p.t, region) : undefined;
   const airing = p ? p.s <= now && now < p.e : false;
@@ -27,6 +30,7 @@ export function ProgrammeSheet({ region, selection, now, onClose }: Props) {
   const canSave = p ? p.e > now : false;
   const progress = p && airing ? (now - p.s) / (p.e - p.s) : 0;
   const upNext = channel && p ? channel.programmes.find((x) => x.s >= p.e) : undefined;
+  const artwork = p && artworkUrl(p);
 
   return (
     <Modal visible={!!selection} transparent animationType="slide" onRequestClose={onClose}>
@@ -57,6 +61,7 @@ export function ProgrammeSheet({ region, selection, now, onClose }: Props) {
           </View>
 
           <ScrollView style={styles.body}>
+            {artwork && <Artwork key={artwork} uri={artwork} />}
             <Text style={styles.title}>{p.t}</Text>
             {p.st && <Text style={styles.subtitle}>{p.st}</Text>}
 
@@ -88,7 +93,7 @@ export function ProgrammeSheet({ region, selection, now, onClose }: Props) {
             )}
             {canSave && !airing && remindersSupported && (
               <Text style={styles.saveHint}>
-                <Ionicons name="notifications-outline" size={12} color={colors.textDim} /> We'll remind you {REMINDER_MINUTES} min before it starts
+                <Ionicons name="notifications-outline" size={12} color={colors.textDim} /> We'll remind you {reminderMinutes} min before it starts
               </Text>
             )}
 
@@ -121,6 +126,12 @@ export function ProgrammeSheet({ region, selection, now, onClose }: Props) {
   );
 }
 
+function Artwork({ uri }: { uri: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return <Image source={{ uri }} style={styles.artwork} contentFit="cover" transition={150} onError={() => setFailed(true)} accessible={false} />;
+}
+
 function Tag({ label, color }: { label: string; color: string }) {
   return (
     <View style={[styles.tag, { borderColor: color }]}>
@@ -147,6 +158,7 @@ const styles = StyleSheet.create({
   channelRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   channelName: { flex: 1, color: colors.textDim, fontSize: 14, fontWeight: '600' },
   body: { marginTop: 16 },
+  artwork: { width: '100%', maxWidth: 420, alignSelf: 'center', aspectRatio: 16 / 9, borderRadius: 8, backgroundColor: colors.cell, marginBottom: 14 },
   title: { color: colors.text, fontSize: 22, fontWeight: '700' },
   subtitle: { color: colors.textDim, fontSize: 16, marginTop: 4 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
