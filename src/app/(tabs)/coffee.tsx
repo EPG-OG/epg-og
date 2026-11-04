@@ -1,19 +1,23 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
+import { useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
+import { WhatsNewModal } from '../../components/WhatsNew';
 import { BUY_ME_A_COFFEE_URL } from '../../config';
 import { showTipJar } from '../../distribution';
 import { useGuide } from '../../epg/useGuide';
 import { usePreferences } from '../../preferences/PreferencesContext';
 import { colors } from '../../theme';
 import { formatDay, formatTime } from '../../time';
+import { WHATS_NEW } from '../../whatsNew';
 
 export default function CoffeeScreen() {
   const { guide } = useGuide('us');
   const { tabOrder, setTabOrder } = usePreferences();
+  const [showingNew, setShowingNew] = useState(false);
 
   const reportBody = [
     "What went wrong? (What you tapped, which channel or show, and what happened)",
@@ -69,7 +73,12 @@ export default function CoffeeScreen() {
             Channel names and logos are trademarks of their respective owners and are shown for identification only. This app
             does not stream any content.
           </Text>
-          <Text style={styles.aboutText}>Version {Constants.expoConfig?.version}</Text>
+          <Text style={styles.aboutText}>
+            Version {Constants.expoConfig?.version} ·{' '}
+            <Text style={styles.link} onPress={() => setShowingNew(true)} accessibilityRole="button">
+              What's new
+            </Text>
+          </Text>
         </View>
 
         <View style={styles.about}>
@@ -110,6 +119,7 @@ export default function CoffeeScreen() {
           </View>
         </View>
       </ScrollView>
+      <WhatsNewModal entries={showingNew ? WHATS_NEW : []} onClose={() => setShowingNew(false)} />
     </SafeAreaView>
   );
 }

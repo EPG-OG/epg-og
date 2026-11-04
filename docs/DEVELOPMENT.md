@@ -20,6 +20,8 @@ Reminders use `expo-notifications`. They don't fire on web.
 | **App code** (screens, layout, text, bug fixes) | Run `npm run update -- "what changed"`. It publishes to both the GitHub APK and the store builds. Installed apps download it on next launch and use it on the launch after. No new APK needed. |
 | **Native changes** (new native library, icon, app name, permissions, Expo SDK upgrade) | Bump `version` in `app.json` and publish a new APK (below). APK users see a "new version available" banner in the app; store users get it through the store. |
 
+**What's new pop-up:** before publishing an update people would notice, add an entry at the top of `WHATS_NEW` in `src/whatsNew.ts`, with the next `id`. It pops up once on each phone's next launch, and stays available from the link beside the version number. Bug fixes and listings changes don't need one.
+
 ## Two versions of the app
 
 `EXPO_PUBLIC_DISTRIBUTION` (set per build profile in `eas.json`, read in `src/distribution.ts`) produces two variants from the same code:

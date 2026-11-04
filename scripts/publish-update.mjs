@@ -25,6 +25,7 @@ for (const { channel, distribution } of targets) {
       'eas-cli@latest', 'update',
       '--channel', channel,
       '--environment', 'production',
+      '--clear-cache', // a stale local bundler cache can carry the previous version number
       '--message', JSON.stringify(message),
       '--non-interactive',
     ],
