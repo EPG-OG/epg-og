@@ -33,7 +33,7 @@ export function ProgrammeSheet({ region, selection, now, onClose }: Props) {
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 20 }]}>
           <View style={styles.handle} />
           <View style={styles.channelRow}>
-            <ChannelLogo uri={channel.logo} crop={channel.lc} name={channel.name} width={72} height={28} />
+            <ChannelLogo uri={channel.logo} crop={channel.lc} dark={!!channel.dl} name={channel.name} width={72} height={28} />
             <Text style={styles.channelName}>
               {channel.number} · {channel.name}
             </Text>

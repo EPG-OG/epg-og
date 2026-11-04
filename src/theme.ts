@@ -7,6 +7,7 @@ export const colors = {
   cellPast: '#22252a',
   cellNow: '#e9e9ea', // airing now on the selected channel
   cellNext: '#8a8d93', // up next on the selected channel
+  logoBacking: '#e6e7ea', // behind logos too dark to read on the guide
   text: '#f2f3f5',
   textDim: '#a3a7ae',
   textOnLight: '#2a2c30',

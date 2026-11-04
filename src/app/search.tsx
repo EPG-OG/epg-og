@@ -91,7 +91,7 @@ export default function SearchScreen() {
         </Pressable>
         {channelView ? (
           <View style={styles.channelHead}>
-            <ChannelLogo uri={channelView.channel.logo} crop={channelView.channel.lc} name={channelView.channel.name} width={56} height={24} />
+            <ChannelLogo uri={channelView.channel.logo} crop={channelView.channel.lc} dark={!!channelView.channel.dl} name={channelView.channel.name} width={56} height={24} />
             <Text style={styles.channelHeadText} numberOfLines={1}>
               {channelView.channel.number} · {channelView.channel.name}
             </Text>
@@ -146,7 +146,7 @@ export default function SearchScreen() {
           if (item.kind === 'channel')
             return (
               <Pressable style={styles.row} onPress={() => setChannelView(item)} accessibilityLabel={`${item.channel.name} schedule`}>
-                <ChannelLogo uri={item.channel.logo} crop={item.channel.lc} name={item.channel.name} width={56} height={24} />
+                <ChannelLogo uri={item.channel.logo} crop={item.channel.lc} dark={!!item.channel.dl} name={item.channel.name} width={56} height={24} />
                 <View style={styles.info}>
                   <Text style={styles.title} numberOfLines={1}>
                     {item.channel.name}
@@ -162,7 +162,7 @@ export default function SearchScreen() {
           const airing = p.s <= now && now < p.e;
           return (
             <Pressable style={styles.row} onPress={() => setSelection({ region, channel, programme: p })} accessibilityLabel={`${p.t}, ${formatRange(p.s, p.e)}`}>
-              {!channelView && <ChannelLogo uri={channel.logo} crop={channel.lc} name={channel.name} width={56} height={24} />}
+              {!channelView && <ChannelLogo uri={channel.logo} crop={channel.lc} dark={!!channel.dl} name={channel.name} width={56} height={24} />}
               <View style={styles.info}>
                 <Text style={styles.title} numberOfLines={1}>
                   {p.t}

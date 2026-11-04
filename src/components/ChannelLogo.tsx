@@ -3,11 +3,20 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { LogoCrop } from '../epg/types';
 import { colors } from '../theme';
 
-type Props = { uri?: string; crop?: LogoCrop; name: string; width: number; height: number };
+type Props = { uri?: string; crop?: LogoCrop; dark?: boolean; name: string; width: number; height: number };
 
 // Logos come from the EPG feed itself (the broadcasters' own artwork). Many are padded
 // inside a 4:3 canvas, so when the feed build measured a crop we zoom to the visible part.
-export function ChannelLogo({ uri, crop, name, width, height }: Props) {
+// Logos too dark to read on the guide (`dark`) sit on a light backing.
+export function ChannelLogo({ uri, crop, dark, name, width, height }: Props) {
+  if (uri && dark) {
+    return (
+      <View style={[styles.backing, { width, height }]}>
+        <ChannelLogo uri={uri} crop={crop} name={name} width={width - 8} height={height - 4} />
+      </View>
+    );
+  }
+
   if (!uri) {
     return (
       <View style={[styles.fallback, { width, height }]}>
@@ -40,6 +49,7 @@ export function ChannelLogo({ uri, crop, name, width, height }: Props) {
 }
 
 const styles = StyleSheet.create({
+  backing: { alignItems: 'center', justifyContent: 'center', borderRadius: 4, backgroundColor: colors.logoBacking },
   fallback: { alignItems: 'center', justifyContent: 'center', borderRadius: 4, backgroundColor: colors.cell, paddingHorizontal: 3 },
   fallbackText: { color: colors.text, fontSize: 10, fontWeight: '800' },
 });

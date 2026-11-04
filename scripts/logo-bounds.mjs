@@ -6,7 +6,7 @@ function decodePng(buf) {
   if (buf.readUInt32BE(0) !== 0x89504e47) return null;
   let pos = 8;
   let width, height, depth, colorType, interlace;
-  let trns;
+  let trns, plte;
   const idat = [];
   while (pos < buf.length) {
     const len = buf.readUInt32BE(pos);
@@ -19,6 +19,7 @@ function decodePng(buf) {
       colorType = data[9];
       interlace = data[12];
     } else if (type === 'tRNS') trns = data;
+    else if (type === 'PLTE') plte = data;
     else if (type === 'IDAT') idat.push(data);
     else if (type === 'IEND') break;
     pos += 12 + len;
@@ -57,7 +58,51 @@ function decodePng(buf) {
     if (colorType === 3) return trns && px[i] < trns.length ? trns[px[i]] : 255;
     return 255; // no alpha channel
   };
-  return { width, height, alphaAt };
+  const rgbAt = (x, y) => {
+    const i = y * stride + x * channels;
+    if (colorType === 3) return [plte[px[i] * 3], plte[px[i] * 3 + 1], plte[px[i] * 3 + 2]];
+    if (colorType === 0 || colorType === 4) return [px[i], px[i], px[i]];
+    return [px[i], px[i + 1], px[i + 2]];
+  };
+  return { width, height, alphaAt, rgbAt };
+}
+
+const linear = (v) => {
+  const c = v / 255;
+  return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+};
+const luminance = ([r, g, b]) => 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+const GUIDE_BACKGROUND = luminance([0x14, 0x16, 0x1a]);
+
+/**
+ * How readable a logo is on the app's dark background:
+ *   darkShare – share of its visible pixels with too little contrast against the background
+ *   coverage  – share of its visible area that is solid (near 1 = it has its own background box)
+ */
+export function logoContrast(buf) {
+  let img;
+  try {
+    img = decodePng(buf);
+  } catch {
+    return undefined;
+  }
+  if (!img) return undefined;
+  const { width, height, alphaAt, rgbAt } = img;
+  let visible = 0, dark = 0;
+  let minX = width, minY = height, maxX = -1, maxY = -1;
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      if (alphaAt(x, y) <= 128) continue;
+      visible++;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+      const contrast = (luminance(rgbAt(x, y)) + 0.05) / (GUIDE_BACKGROUND + 0.05);
+      if (contrast < 2.2) dark++;
+    }
+  if (!visible) return undefined;
+  return { darkShare: dark / visible, coverage: visible / ((maxX - minX + 1) * (maxY - minY + 1)) };
 }
 
 /** Returns [x, y, w, h, imageWidth, imageHeight] of the visible area, or undefined if it can't tell. */

@@ -166,7 +166,7 @@ const ChannelCell = memo(function ChannelCell({
       {m.wide ? (
         <View style={styles.channelWide}>
           <Text style={[styles.channelNumberWide, selected && styles.selectedText]}>{channel.number}</Text>
-          <ChannelLogo uri={channel.logo} crop={channel.lc} name={channel.name} width={84} height={34} />
+          <ChannelLogo uri={channel.logo} crop={channel.lc} dark={!!channel.dl} name={channel.name} width={84} height={34} />
           <Text style={[nameStyle, styles.channelNameWide]} numberOfLines={1}>
             {channel.name}
           </Text>
@@ -176,11 +176,11 @@ const ChannelCell = memo(function ChannelCell({
         <>
           <View style={styles.channelTop}>
             <Text style={[styles.channelNumber, selected && styles.selectedText]}>{channel.number}</Text>
-            <ChannelLogo uri={channel.logo} crop={channel.lc} name={channel.name} width={62} height={24} />
+            <ChannelLogo uri={channel.logo} crop={channel.lc} dark={!!channel.dl} name={channel.name} width={62} height={24} />
           </View>
           <View style={styles.channelBottom}>
             {selected && <Ionicons name="play" size={10} color={colors.accent} />}
-            <Text style={nameStyle} numberOfLines={1}>
+            <Text style={nameStyle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
               {channel.name}
             </Text>
           </View>

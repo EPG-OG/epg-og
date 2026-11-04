@@ -15,6 +15,7 @@ export type WatchItem = {
   channelNumber: number;
   logo?: string;
   logoCrop?: LogoCrop;
+  logoDark?: boolean;
   title: string;
   subtitle?: string;
   s: number;
@@ -52,6 +53,7 @@ function itemFor(region: RegionKey, channel: Channel, p: Programme, followId?: s
     channelNumber: channel.number,
     logo: channel.logo,
     logoCrop: channel.lc,
+    logoDark: !!channel.dl,
     title: p.t,
     subtitle: p.st,
     s: p.s,

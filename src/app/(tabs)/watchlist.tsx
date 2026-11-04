@@ -44,7 +44,7 @@ export default function WatchlistScreen() {
           const airing = item.s <= now && now < item.e;
           return (
             <View style={styles.row}>
-              <ChannelLogo uri={item.logo} crop={item.logoCrop} name={item.channelName} width={56} height={24} />
+              <ChannelLogo uri={item.logo} crop={item.logoCrop} dark={item.logoDark} name={item.channelName} width={56} height={24} />
               <View style={styles.info}>
                 <View style={styles.titleRow}>
                   {item.followId && <Ionicons name="repeat" size={14} color={colors.accent} accessibilityLabel="Added by a followed show" />}

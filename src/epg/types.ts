@@ -21,6 +21,7 @@ export type Channel = {
   name: string;
   logo?: string;
   lc?: LogoCrop;
+  dl?: 1; // logo is too dark for the guide's background: show it on a light backing
   programmes: Programme[];
 };
 

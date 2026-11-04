@@ -10,7 +10,7 @@ import { gunzipSync } from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
-import { logoBounds } from './logo-bounds.mjs';
+import { logoBounds, logoContrast } from './logo-bounds.mjs';
 import { regions } from './lineup.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -26,6 +26,12 @@ const hoursBack = Number(args['hours-back'] ?? 3);
 const hoursAhead = Number(args['hours-ahead'] ?? 48);
 const CACHE_MS = 2 * 60 * 60 * 1000;
 const MAX_DESC = 280;
+// Official dark-background logos, by channel id (see find-dark-logos.mjs).
+const darkLogos = JSON.parse(await readFile(path.join(root, 'scripts', 'dark-logos.json'), 'utf8'));
+// A logo needs a light backing if this share of it is too dark to read on the guide's background,
+// unless it's a solid badge with its own background (near-full coverage).
+const DARK_SHARE = 0.25;
+const SOLID_COVERAGE = 0.95;
 
 async function loadFeed(url) {
   await mkdir(cacheDir, { recursive: true });
@@ -42,9 +48,12 @@ async function loadFeed(url) {
   return gunzipSync(buf).toString('utf8');
 }
 
+// The feed uses a generic placeholder image for some channels; the app shows the name instead.
+const realLogo = (logo) => (logo?.includes('/generic/') ? undefined : logo);
+
 const LOGO_CACHE_MS = 7 * 24 * 60 * 60 * 1000;
 
-// Measures the logo's visible area (cached on disk) so the app can crop transparent padding.
+// Measures the logo (cached on disk) so the app can crop transparent padding and keep it readable.
 async function measureLogo(url) {
   const dir = path.join(cacheDir, 'logos');
   await mkdir(dir, { recursive: true });
@@ -63,7 +72,11 @@ async function measureLogo(url) {
       return undefined;
     }
   }
-  return logoBounds(buf);
+  const contrast = logoContrast(buf);
+  return {
+    bounds: logoBounds(buf),
+    needsBacking: !!contrast && contrast.darkShare >= DARK_SHARE && contrast.coverage < SOLID_COVERAGE,
+  };
 }
 
 async function mapLimit(items, limit, fn) {
@@ -176,13 +189,14 @@ async function buildRegion(key, region) {
         empty.push(c.id);
         return [];
       }
-      return [{ id: c.id, number: number++, name: c.name ?? meta.name ?? c.id, logo: meta.logo, programmes: programmes.get(c.id) }];
+      return [{ id: c.id, number: number++, name: c.name ?? meta.name ?? c.id, logo: darkLogos[c.id] ?? realLogo(meta.logo), programmes: programmes.get(c.id) }];
     }),
   }));
 
   await mapLimit(categories.flatMap((c) => c.channels).filter((c) => c.logo), 8, async (c) => {
-    const bounds = await measureLogo(c.logo);
-    if (bounds) c.lc = bounds;
+    const measured = await measureLogo(c.logo);
+    if (measured?.bounds) c.lc = measured.bounds;
+    if (measured?.needsBacking) c.dl = 1;
   });
 
   if (missing.length) console.warn(`  ! not in feed, skipped: ${missing.join(', ')}`);
