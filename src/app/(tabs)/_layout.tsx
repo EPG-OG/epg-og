@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import { StyleSheet, Text, View, type ColorValue } from 'react-native';
+import { DraggableTabBar } from '../../components/DraggableTabBar';
 import { showTipJar } from '../../distribution';
 import { colors } from '../../theme';
 import { useWatchlist } from '../../watchlist/WatchlistContext';
@@ -18,12 +19,9 @@ export default function TabLayout() {
   const { items } = useWatchlist();
   return (
     <Tabs
+      tabBar={(props) => <DraggableTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.accent,
-        tabBarInactiveTintColor: colors.textDim,
-        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.divider },
-        tabBarLabelStyle: { fontWeight: '600' },
         sceneStyle: { backgroundColor: colors.background },
       }}
     >
@@ -35,13 +33,21 @@ export default function TabLayout() {
           title: 'Watchlist',
           tabBarIcon: ({ color, size }) => <Ionicons name="bookmark" size={size} color={color as string} />,
           tabBarBadge: items.length || undefined,
-          tabBarBadgeStyle: { backgroundColor: colors.accent, color: colors.background, fontWeight: '700' },
+        }}
+      />
+      <Tabs.Screen
+        name="favourites"
+        options={{
+          title: 'Favourites',
+          tabBarIcon: ({ color, size }) => <Ionicons name="star" size={size} color={color as string} />,
         }}
       />
       <Tabs.Screen
         name="coffee"
         options={{
           title: showTipJar ? 'Buy Me a Coffee' : 'About',
+          // Five tabs leave no room for the full name on a phone.
+          tabBarLabel: showTipJar ? 'Coffee' : 'About',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name={showTipJar ? 'cafe' : 'information-circle'} size={size} color={color as string} />
           ),

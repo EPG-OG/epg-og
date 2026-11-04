@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Channel, Programme, RegionKey } from '../epg/types';
+import { usePreferences } from '../preferences/PreferencesContext';
 import { colors } from '../theme';
 import { formatDay, formatDuration, formatRange } from '../time';
 import { REMINDER_MINUTES, remindersSupported } from '../watchlist/reminders';
@@ -18,6 +19,7 @@ type Props = {
 export function ProgrammeSheet({ region, selection, now, onClose }: Props) {
   const insets = useSafeAreaInsets();
   const { isSaved, toggle, findFollow, follow, unfollow } = useWatchlist();
+  const { isFavourite, toggleFavourite } = usePreferences();
   const { channel, programme: p } = selection ?? {};
   const followed = p ? findFollow('title', p.t, region) : undefined;
   const airing = p ? p.s <= now && now < p.e : false;
@@ -37,6 +39,18 @@ export function ProgrammeSheet({ region, selection, now, onClose }: Props) {
             <Text style={styles.channelName}>
               {channel.number} · {channel.name}
             </Text>
+            <Pressable
+              onPress={() => toggleFavourite(channel.id)}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel={isFavourite(channel.id) ? `Remove ${channel.name} from favourites` : `Add ${channel.name} to favourites`}
+            >
+              <Ionicons
+                name={isFavourite(channel.id) ? 'star' : 'star-outline'}
+                size={24}
+                color={isFavourite(channel.id) ? colors.coffee : colors.textDim}
+              />
+            </Pressable>
             <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Close">
               <Ionicons name="close" size={24} color={colors.textDim} />
             </Pressable>

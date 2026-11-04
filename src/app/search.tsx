@@ -7,6 +7,7 @@ import { ChannelLogo } from '../components/ChannelLogo';
 import { ProgrammeSheet } from '../components/ProgrammeSheet';
 import type { Channel, Guide, Programme, RegionKey } from '../epg/types';
 import { useGuide } from '../epg/useGuide';
+import { usePreferences } from '../preferences/PreferencesContext';
 import { colors } from '../theme';
 import { formatDay, formatRange } from '../time';
 import { useNow } from '../useNow';
@@ -35,7 +36,19 @@ export default function SearchScreen() {
   const { guide: us } = useGuide('us');
   const { guide: uk } = useGuide('uk');
   const { isSaved } = useWatchlist();
+  const { isFavourite, toggleFavourite } = usePreferences();
   const now = useNow();
+
+  const star = (channel: Channel) => (
+    <Pressable
+      onPress={() => toggleFavourite(channel.id)}
+      hitSlop={10}
+      accessibilityRole="button"
+      accessibilityLabel={isFavourite(channel.id) ? `Remove ${channel.name} from favourites` : `Add ${channel.name} to favourites`}
+    >
+      <Ionicons name={isFavourite(channel.id) ? 'star' : 'star-outline'} size={22} color={isFavourite(channel.id) ? colors.coffee : colors.textDim} />
+    </Pressable>
+  );
 
   const regions = useMemo(
     () =>
@@ -95,6 +108,7 @@ export default function SearchScreen() {
             <Text style={styles.channelHeadText} numberOfLines={1}>
               {channelView.channel.number} · {channelView.channel.name}
             </Text>
+            {star(channelView.channel)}
           </View>
         ) : (
           <View style={styles.inputWrap}>
@@ -155,6 +169,7 @@ export default function SearchScreen() {
                     Channel {item.channel.number} · {item.region.toUpperCase()} · See schedule
                   </Text>
                 </View>
+                {star(item.channel)}
                 <Ionicons name="chevron-forward" size={18} color={colors.textDim} />
               </Pressable>
             );
@@ -203,7 +218,7 @@ const styles = StyleSheet.create({
   },
   input: { flex: 1, color: colors.text, fontSize: 16, paddingVertical: 10, outlineStyle: 'none' } as object,
   channelHead: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  channelHeadText: { color: colors.text, fontSize: 17, fontWeight: '700', flexShrink: 1 },
+  channelHeadText: { color: colors.text, fontSize: 17, fontWeight: '700', flex: 1 },
   scopes: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingVertical: 6 },
   scope: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: colors.cell },
   scopeOn: { backgroundColor: colors.cellNow },

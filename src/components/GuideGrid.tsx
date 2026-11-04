@@ -2,13 +2,15 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ScrollViewInstance } from 'react-native';
 import type { Channel, Programme, RegionKey } from '../epg/types';
+import { usePreferences } from '../preferences/PreferencesContext';
 import { colors } from '../theme';
 import { floorToHalfHour, formatDay, formatRange, formatTime } from '../time';
 import { useWatchlist } from '../watchlist/WatchlistContext';
 import { ChannelLogo } from './ChannelLogo';
 
 type Props = {
-  region: RegionKey;
+  /** The country of these channels, or a lookup when a list mixes countries (Favourites). */
+  region: RegionKey | ((channel: Channel) => RegionKey);
   channels: Channel[];
   from: number;
   to: number;
@@ -159,7 +161,7 @@ export function GuideGrid({ region, channels, from, to, now, onOpen }: Props) {
                 ) : (
                   <ProgrammeRow
                     key={c.id}
-                    region={region}
+                    region={typeof region === 'function' ? region(c) : region}
                     channel={c}
                     selected={c.id === selectedId}
                     now={now}
@@ -193,9 +195,17 @@ const ChannelCell = memo(function ChannelCell({
   m: Metrics;
   onPress: () => void;
 }) {
+  const { isFavourite, toggleFavourite } = usePreferences();
+  const favourite = isFavourite(channel.id);
   const nameStyle = [styles.channelName, selected && styles.selectedText];
   return (
-    <Pressable onPress={onPress} style={[styles.channel, { height: m.rowH }]} accessibilityLabel={`Channel ${channel.number}, ${channel.name}`}>
+    <Pressable
+      onPress={onPress}
+      onLongPress={() => toggleFavourite(channel.id)}
+      style={[styles.channel, { height: m.rowH }]}
+      accessibilityLabel={`Channel ${channel.number}, ${channel.name}${favourite ? ', favourite' : ''}`}
+      accessibilityHint="Hold to add or remove from favourites"
+    >
       {m.wide ? (
         <View style={styles.channelWide}>
           <Text style={[styles.channelNumberWide, selected && styles.selectedText]}>{channel.number}</Text>
@@ -203,6 +213,7 @@ const ChannelCell = memo(function ChannelCell({
           <Text style={[nameStyle, styles.channelNameWide]} numberOfLines={1}>
             {channel.name}
           </Text>
+          {favourite && <Ionicons name="star" size={15} color={colors.coffee} />}
           {selected && <Ionicons name="play" size={16} color={colors.accent} />}
         </View>
       ) : (
@@ -213,6 +224,7 @@ const ChannelCell = memo(function ChannelCell({
           </View>
           <View style={styles.channelBottom}>
             {selected && <Ionicons name="play" size={10} color={colors.accent} />}
+            {favourite && <Ionicons name="star" size={10} color={colors.coffee} />}
             <Text style={nameStyle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
               {channel.name}
             </Text>

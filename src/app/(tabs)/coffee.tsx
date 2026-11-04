@@ -7,11 +7,13 @@ import Constants from 'expo-constants';
 import { BUY_ME_A_COFFEE_URL } from '../../config';
 import { showTipJar } from '../../distribution';
 import { useGuide } from '../../epg/useGuide';
+import { usePreferences } from '../../preferences/PreferencesContext';
 import { colors } from '../../theme';
 import { formatDay, formatTime } from '../../time';
 
 export default function CoffeeScreen() {
   const { guide } = useGuide('us');
+  const { tabOrder, setTabOrder } = usePreferences();
 
   return (
     <SafeAreaView edges={['top']} style={styles.root}>
@@ -57,6 +59,16 @@ export default function CoffeeScreen() {
             does not stream any content.
           </Text>
           <Text style={styles.aboutText}>Version {Constants.expoConfig?.version}</Text>
+        </View>
+
+        <View style={styles.about}>
+          <Text style={styles.aboutTitle}>Arrange your tabs</Text>
+          <Text style={styles.aboutText}>Hold any tab at the bottom of the screen and drag it to move it. The app opens on whichever tab is first.</Text>
+          {tabOrder.length > 0 && (
+            <Text style={[styles.aboutText, styles.link]} onPress={() => setTabOrder([])} accessibilityRole="button">
+              Reset tab order
+            </Text>
+          )}
         </View>
 
         <View style={styles.official}>
