@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { artworkUrl } from '../epg/programme';
 import type { Channel, Programme, RegionKey } from '../epg/types';
@@ -9,6 +9,7 @@ import { usePreferences } from '../preferences/PreferencesContext';
 import { colors } from '../theme';
 import { formatDay, formatDuration, formatRange } from '../time';
 import { isWebsite } from '../distribution';
+import { addToCalendar, googleCalendarUrl } from '../watchlist/calendar';
 import { remindersSupported } from '../watchlist/reminders';
 import { useWatchlist } from '../watchlist/WatchlistContext';
 import { ChannelLogo } from './ChannelLogo';
@@ -93,7 +94,31 @@ export function ProgrammeSheet({ region, selection, now, onClose }: Props) {
               </Pressable>
             )}
             {canSave && !airing && isWebsite && (
-              <Text style={styles.saveHint}>Reminders need the Android app. In the browser, your watchlist is saved but won't notify you.</Text>
+              <>
+                <View style={styles.calendarRow}>
+                  <Pressable
+                    onPress={() => addToCalendar(region, channel, p, reminderMinutes)}
+                    style={styles.calendarBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Add ${p.t} to your calendar, with an alert ${reminderMinutes} minutes before`}
+                  >
+                    <Ionicons name="calendar-outline" size={17} color={colors.text} />
+                    <Text style={styles.calendarText}>Add to calendar</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => Linking.openURL(googleCalendarUrl(region, channel, p))}
+                    style={styles.calendarBtn}
+                    accessibilityRole="link"
+                    accessibilityLabel={`Add ${p.t} to Google Calendar`}
+                  >
+                    <Ionicons name="logo-google" size={15} color={colors.text} />
+                    <Text style={styles.calendarText}>Google Calendar</Text>
+                  </Pressable>
+                </View>
+                <Text style={styles.saveHint}>
+                  Your calendar alerts you {reminderMinutes} min before (change it at the top of the Watchlist). Google Calendar uses its usual alert. The Android app reminds you by itself.
+                </Text>
+              </>
             )}
             {canSave && !airing && remindersSupported && (
               <Text style={styles.saveHint}>
@@ -112,7 +137,9 @@ export function ProgrammeSheet({ region, selection, now, onClose }: Props) {
             <Text style={styles.saveHint}>
               {followed
                 ? 'New airings are added to your watchlist automatically. Tap again to stop.'
-                : 'Adds every future airing to your watchlist, with reminders'}
+                : isWebsite
+                  ? 'Adds every future airing to your watchlist'
+                  : 'Adds every future airing to your watchlist, with reminders'}
             </Text>
 
             {p.d && <Text style={styles.desc}>{p.d}</Text>}
@@ -198,6 +225,19 @@ const styles = StyleSheet.create({
   followBtnOn: { backgroundColor: 'rgba(62,164,240,0.15)' },
   followText: { color: colors.accent, fontSize: 15, fontWeight: '700' },
   saveHint: { color: colors.textDim, fontSize: 12, textAlign: 'center', marginTop: 8 },
+  calendarRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 },
+  calendarBtn: {
+    flexGrow: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: colors.cell,
+  },
+  calendarText: { color: colors.text, fontSize: 14, fontWeight: '700' },
   desc: { color: colors.textDim, fontSize: 15, lineHeight: 22, marginTop: 16 },
   next: { marginTop: 20, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.divider },
   nextLabel: { color: colors.textDim, fontSize: 12, fontWeight: '600' },
