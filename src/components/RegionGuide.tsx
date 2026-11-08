@@ -13,6 +13,7 @@ import { GuideGrid } from './GuideGrid';
 import { HeaderActions } from './HeaderActions';
 import { ListingsMessage } from './ListingsMessage';
 import { ProgrammeSheet } from './ProgrammeSheet';
+import { RetroTitle } from './RetroTitle';
 import { UpdateBanner } from './UpdateBanner';
 
 const ALL = 'all';
@@ -49,7 +50,7 @@ export function RegionGuide({ region, title }: { region: RegionKey; title: strin
   return (
     <SafeAreaView edges={['top']} style={styles.root}>
       <View style={styles.titleBar}>
-        <Text style={styles.title}>{title}</Text>
+        <RetroTitle text={title} region={region} />
         <Text style={styles.subtitle}>TV Guide</Text>
         <View style={styles.actions}>
           <HeaderActions />
@@ -88,9 +89,8 @@ export function RegionGuide({ region, title }: { region: RegionKey; title: strin
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
-  titleBar: { flexDirection: 'row', alignItems: 'baseline', gap: 8, paddingHorizontal: 14, paddingTop: 8 },
-  title: { color: colors.text, fontSize: 26, fontWeight: '800' },
-  subtitle: { color: colors.textDim, fontSize: 15, fontWeight: '600' },
+  titleBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 12, paddingHorizontal: 14, paddingTop: 8 },
+  subtitle: { color: colors.textDim, fontSize: 15, fontWeight: '600', marginBottom: 6 },
   actions: { marginLeft: 'auto', alignSelf: 'center', padding: 4 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
 });
