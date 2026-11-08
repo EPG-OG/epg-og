@@ -9,6 +9,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      force:
+        description: Publish new listings even if they look wrong (e.g. after removing many channels)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -22,12 +27,20 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      problem: ${{ steps.check.outputs.problem }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # If the feed can't be downloaded, the check below keeps the live listings.
       - run: node scripts/build-epg.mjs --out _site
+        continue-on-error: true
+      - id: check
+        env:
+          FORCE: ${{ inputs.force }}
+        run: node scripts/check-listings.mjs _site https://epgog.com
       # Landing page + privacy policy (the Play Store needs a public privacy policy URL)
       - run: cp site/* _site/
       - name: Write version.json from the latest release
@@ -51,6 +64,19 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # Fails on purpose when the listings check held something back, so GitHub sends an email. The site
+  # has still been published, with the last good listings.
+  alert:
+    needs: [build, deploy]
+    if: always() && needs.build.outputs.problem != ''
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          PROBLEM: ${{ needs.build.outputs.problem }}
+        run: |
+          echo "::error::Listings problem: $PROBLEM"
+          exit 1
 
   # GitHub pauses scheduled workflows after 60 days without repository activity.
   # Re-enabling the workflow through the API resets that timer, so the listings never stop.
