@@ -47,6 +47,8 @@ Both are free and show the same listings, which update every 6 hours. Favourites
 ## 🆕 What's new
 
 - **Use it in your browser:** the whole guide now works at [epgog.com/app](https://epgog.com/app/), including on iPhone, with nothing to install.
+- **Flag titles:** the USA and UK names are drawn in their flags and ripple like a flag in the wind.
+- **Big text friendly:** the guide stays readable even with your phone's largest text size.
 - **Favourites:** tap any channel's name to add it to your own guide, with USA and UK channels side by side. Hold and drag to put them in any order, and swipe left to remove one.
 - **Move your tabs:** hold and drag a tab at the bottom to put it where you want it.
 - **Now, Tonight, Tomorrow:** jump straight there. The guide now runs two days ahead.
@@ -77,6 +79,7 @@ Turn your phone sideways or use a tablet, and you get the full TV-style grid.
 - ⏱️ **Live now-line** across the grid, with **New** and **Live** badges on shows
 - 📝 **Show details**: artwork, description, running time, a progress bar for what's on now, and what's up next
 - 🔄 **Always fresh.** Listings update every 6 hours and are saved for offline use, and the app updates itself with fixes and new features
+- 🛟 **Report a problem** straight from the app: it opens your email with the app version filled in
 - 🔒 **Private.** No account, no ads, no tracking. Your watchlist and favourites stay on your phone ([privacy policy](https://epgog.com/privacy.html))
 
 ## Channels
@@ -125,7 +128,7 @@ When a new version comes out, the app shows a banner. Tap it to download the upd
 
 ## Use it in your browser
 
-On iPhone, a computer or anything else, open **[epgog.com/app](https://epgog.com/app/)** for the full guide, with nothing to install. Your favourites and watchlist are saved in that browser. Show reminders need the Android app.
+On iPhone, a computer or anything else, open **[epgog.com/app](https://epgog.com/app/)** for the full guide, with nothing to install. Your favourites and watchlist are saved in that browser. For reminders, open a show and tap **Add to calendar** or **Google Calendar**, and your calendar alerts you before it starts. The Android app sends reminders itself.
 
 On a computer, scroll sideways through the guide with a trackpad, or hold **Shift** and use your mouse wheel. The **Now**, **Tonight** and **Tomorrow** buttons jump straight there.
 
