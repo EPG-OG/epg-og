@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import { WhatsNewModal } from '../../components/WhatsNew';
 import { BUY_ME_A_COFFEE_URL } from '../../config';
-import { showTipJar } from '../../distribution';
+import { isWebsite, showTipJar } from '../../distribution';
 import { useGuide } from '../../epg/useGuide';
 import { usePreferences } from '../../preferences/PreferencesContext';
 import { colors } from '../../theme';
@@ -61,6 +61,18 @@ export default function CoffeeScreen() {
             <Text style={styles.title}>EPG OG</Text>
             <Text style={styles.body}>A free TV guide for USA and UK channels. No ads, no sign-up.</Text>
           </>
+        )}
+
+        {isWebsite && (
+          <View style={styles.about}>
+            <Text style={styles.aboutTitle}>Get the Android app</Text>
+            <Text style={styles.aboutText}>
+              You're using the browser version. The Android app adds reminders before your shows start, and works offline.
+            </Text>
+            <Text style={[styles.aboutText, styles.link]} onPress={() => Linking.openURL('https://epgog.com/')} accessibilityRole="link">
+              Download it from epgog.com
+            </Text>
+          </View>
         )}
 
         <View style={styles.about}>

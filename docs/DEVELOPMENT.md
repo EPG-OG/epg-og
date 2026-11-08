@@ -12,6 +12,10 @@ npm start          # then scan the QR code with Expo Go, or press a / i
 
 Reminders use `expo-notifications`. They don't fire on web.
 
+## Browser version
+
+The same app also runs at [epgog.com/app](https://epgog.com/app/). The listings workflow builds it on every run (`npx expo export --platform web` with `EXPO_WEB_BASE_URL=/app`, read by `app.config.js`), so it always matches the code on `main`; there's nothing separate to publish. It hides the update banner, explains that reminders need the Android app (`isWebsite` in `src/distribution.ts`), and is kept out of search results with a `noindex` tag. GitHub Pages can't serve its inner screens as files, so `site/404.html` sends a visitor who opens one directly, such as `/app/uk`, back to `/app/`.
+
 ## How updates reach people
 
 | What changed | How it gets to installed apps |

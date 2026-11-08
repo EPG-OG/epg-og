@@ -8,6 +8,7 @@ import type { Channel, Programme, RegionKey } from '../epg/types';
 import { usePreferences } from '../preferences/PreferencesContext';
 import { colors } from '../theme';
 import { formatDay, formatDuration, formatRange } from '../time';
+import { isWebsite } from '../distribution';
 import { remindersSupported } from '../watchlist/reminders';
 import { useWatchlist } from '../watchlist/WatchlistContext';
 import { ChannelLogo } from './ChannelLogo';
@@ -90,6 +91,9 @@ export function ProgrammeSheet({ region, selection, now, onClose }: Props) {
                 <Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={18} color={saved ? colors.textOnLight : colors.text} />
                 <Text style={[styles.saveText, saved && styles.saveTextOn]}>{saved ? 'On your watchlist' : 'Add to watchlist'}</Text>
               </Pressable>
+            )}
+            {canSave && !airing && isWebsite && (
+              <Text style={styles.saveHint}>Reminders need the Android app. In the browser, your watchlist is saved but won't notify you.</Text>
             )}
             {canSave && !airing && remindersSupported && (
               <Text style={styles.saveHint}>

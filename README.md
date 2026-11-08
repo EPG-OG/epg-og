@@ -11,7 +11,7 @@
 </p>
 
 <h3 align="center">
-  <a href="https://epgog.com">⬇️ Download for Android</a>
+  <a href="https://epgog.com">⬇️ Download for Android</a> · <a href="https://epgog.com/app/">🌐 Open in your browser</a>
 </h3>
 
 ---
@@ -109,7 +109,7 @@ When a new version comes out, the app shows a banner. Tap it to download the upd
 
 **Using [Obtainium](https://obtainium.imranr.dev)?** Tap **Get it on Obtainium** on [epgog.com](https://epgog.com), or in Obtainium tap **Add App** and paste `https://github.com/EPG-OG/epg-og`. You'll get updates straight from our GitHub releases.
 
-An iPhone version isn't available yet.
+**On iPhone, a computer or a tablet?** Open **[epgog.com/app](https://epgog.com/app/)** in your browser for the full guide, with nothing to install. Favourites and your watchlist are saved in that browser. Show reminders need the Android app.
 
 ## Support the app
 

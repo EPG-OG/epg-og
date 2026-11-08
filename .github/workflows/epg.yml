@@ -29,11 +29,13 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       problem: ${{ steps.check.outputs.problem }}
+      web: ${{ steps.web.outcome }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       # If the feed can't be downloaded, the check below keeps the live listings.
       - run: node scripts/build-epg.mjs --out _site
         continue-on-error: true
@@ -43,6 +45,26 @@ jobs:
         run: node scripts/check-listings.mjs _site https://epgog.com
       # Landing page + privacy policy (the Play Store needs a public privacy policy URL)
       - run: cp site/* _site/
+      # The browser version of the app at epgog.com/app, rebuilt every run so it always matches the code.
+      # If this fails, the listings and front page still publish; the alert below emails about it.
+      - run: npm ci
+        id: deps
+        continue-on-error: true
+      - name: Build the browser version
+        id: web
+        if: steps.deps.outcome == 'success'
+        continue-on-error: true
+        env:
+          EXPO_WEB_BASE_URL: /app
+          EXPO_PUBLIC_DISTRIBUTION: github
+        run: |
+          npx expo export --platform web --output-dir _site/app
+          # Kept out of search results: people find EPG OG through the front page instead.
+          sed -i 's#<head>#<head><meta name="robots" content="noindex">#' _site/app/index.html
+          grep -q 'name="robots"' _site/app/index.html
+      - name: Drop a half-built browser version
+        if: steps.web.outcome != 'success'
+        run: rm -rf _site/app
       - name: Write version.json from the latest release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -65,17 +87,19 @@ jobs:
       - id: deployment
         uses: actions/deploy-pages@v4
 
-  # Fails on purpose when the listings check held something back, so GitHub sends an email. The site
-  # has still been published, with the last good listings.
+  # Fails on purpose when the listings check held something back or the browser version didn't
+  # build, so GitHub sends an email. The rest of the site has still been published.
   alert:
     needs: [build, deploy]
-    if: always() && needs.build.outputs.problem != ''
+    if: always() && (needs.build.outputs.problem != '' || needs.build.outputs.web != 'success')
     runs-on: ubuntu-latest
     steps:
       - env:
           PROBLEM: ${{ needs.build.outputs.problem }}
+          WEB: ${{ needs.build.outputs.web }}
         run: |
-          echo "::error::Listings problem: $PROBLEM"
+          if [ -n "$PROBLEM" ]; then echo "::error::Listings problem: $PROBLEM"; fi
+          if [ "$WEB" != "success" ]; then echo "::error::The browser version at epgog.com/app didn't build ($WEB), so it's missing from the site."; fi
           exit 1
 
   # GitHub pauses scheduled workflows after 60 days without repository activity.
