@@ -5,7 +5,7 @@ import { GUIDE_HOURS_AHEAD, GUIDE_HOURS_BACK } from '../config';
 import type { Channel, Programme, RegionKey } from '../epg/types';
 import { useGuide } from '../epg/useGuide';
 import { usePreferences } from '../preferences/PreferencesContext';
-import { colors } from '../theme';
+import { COMPACT_TEXT, colors } from '../theme';
 import { floorToHalfHour, nowSeconds } from '../time';
 import { useNow } from '../useNow';
 import { CategoryBar } from './CategoryBar';
@@ -51,7 +51,9 @@ export function RegionGuide({ region, title }: { region: RegionKey; title: strin
     <SafeAreaView edges={['top']} style={styles.root}>
       <View style={styles.titleBar}>
         <RetroTitle text={title} region={region} />
-        <Text style={styles.subtitle}>TV Guide</Text>
+        <Text style={styles.subtitle} numberOfLines={1} maxFontSizeMultiplier={COMPACT_TEXT}>
+          TV Guide
+        </Text>
         <View style={styles.actions}>
           <HeaderActions />
         </View>

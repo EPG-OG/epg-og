@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRef, useState, type ReactNode } from 'react';
 import { Animated, PanResponder, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../theme';
+import { COMPACT_TEXT, colors } from '../theme';
 
 const HOLD_MS = 350;
 const SWIPE_START = 10;
@@ -116,7 +116,7 @@ export function ArrangeableCell(props: Props) {
       {swiping && (
         <View style={styles.remove}>
           <Ionicons name="trash-outline" size={18} color={colors.text} />
-          <Text style={styles.removeText}>Remove</Text>
+          <Text maxFontSizeMultiplier={COMPACT_TEXT} style={styles.removeText}>Remove</Text>
         </View>
       )}
       <Animated.View style={[styles.content, { transform: [{ translateX: x }] }]}>{children}</Animated.View>

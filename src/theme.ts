@@ -1,3 +1,7 @@
+// How far the phone's text size setting may enlarge text that sits in fixed-size boxes: the guide
+// grid, its header and the tab bar. Beyond this it would overlap; show details are never limited.
+export const COMPACT_TEXT = 1.3;
+
 // Dark palette sampled from the set-top box guide this app is styled after.
 export const colors = {
   background: '#14161a',

@@ -90,7 +90,9 @@ export default function FavouritesScreen() {
   return (
     <SafeAreaView edges={['top']} style={styles.root}>
       <View style={styles.titleBar}>
-        <Text style={styles.title}>Favourites</Text>
+        <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={1.5}>
+          Favourites
+        </Text>
         <View style={styles.actions}>
           {favourites.length > 0 && (
             <Pressable onPress={() => setPicking(true)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Add or remove favourite channels">
@@ -152,7 +154,7 @@ export default function FavouritesScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   titleBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 8, paddingBottom: 8 },
-  title: { color: colors.text, fontSize: 26, fontWeight: '800' },
+  title: { color: colors.text, fontSize: 26, fontWeight: '800', flexShrink: 1 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 18, padding: 4 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 10 },
   emptyTitle: { color: colors.text, fontSize: 18, fontWeight: '700', marginTop: 6 },

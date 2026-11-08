@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import { useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { PanResponder, StyleSheet, Text, View } from 'react-native';
 import { usePreferences } from '../preferences/PreferencesContext';
-import { colors } from '../theme';
+import { COMPACT_TEXT, colors } from '../theme';
 
 type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
 
@@ -162,13 +162,13 @@ function DraggableTab(props: TabProps) {
         {icon}
         {badge !== undefined && (
           <View style={styles.badge}>
-            <Text style={styles.badgeText} numberOfLines={1}>
+            <Text maxFontSizeMultiplier={COMPACT_TEXT} style={styles.badgeText} numberOfLines={1}>
               {badge}
             </Text>
           </View>
         )}
       </View>
-      <Text style={[styles.label, { color }]} numberOfLines={1}>
+      <Text maxFontSizeMultiplier={COMPACT_TEXT} style={[styles.label, { color }]} numberOfLines={1}>
         {label}
       </Text>
     </View>

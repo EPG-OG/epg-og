@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, typ
 import { isFiller } from '../epg/programme';
 import type { Channel, Programme, RegionKey } from '../epg/types';
 import { usePreferences } from '../preferences/PreferencesContext';
-import { colors } from '../theme';
+import { COMPACT_TEXT, colors } from '../theme';
 import { atLocalHour, floorToHalfHour, formatDay, formatRange, formatTime } from '../time';
 import { useWatchlist } from '../watchlist/WatchlistContext';
 import { ArrangeableCell } from './ArrangeableCell';
@@ -256,7 +256,7 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
               accessibilityLabel={`Jump to ${j.label.toLowerCase()}`}
               accessibilityState={{ selected: active }}
             >
-              <Text style={[styles.jumpText, active && styles.jumpTextActive]}>{j.label}</Text>
+              <Text maxFontSizeMultiplier={COMPACT_TEXT} style={[styles.jumpText, active && styles.jumpTextActive]}>{j.label}</Text>
             </Pressable>
           );
         })}
@@ -264,20 +264,20 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
       <View style={[styles.header, { height: m.headerH }]}>
         <Pressable onPress={() => jump(nowTarget)} style={[styles.clock, { width: m.channelW }]} accessibilityLabel="Jump to now">
           {m.wide ? (
-            <Text style={styles.clockWide}>
+            <Text maxFontSizeMultiplier={COMPACT_TEXT} style={styles.clockWide}>
               {formatDay(Math.max(viewTime, now))}, {formatTime(now)}
             </Text>
           ) : (
             <>
-              <Text style={styles.clockDay}>{formatDay(Math.max(viewTime, now))}</Text>
-              <Text style={styles.clockTime}>{formatTime(now)}</Text>
+              <Text maxFontSizeMultiplier={COMPACT_TEXT} style={styles.clockDay}>{formatDay(Math.max(viewTime, now))}</Text>
+              <Text maxFontSizeMultiplier={COMPACT_TEXT} style={styles.clockTime}>{formatTime(now)}</Text>
             </>
           )}
         </Pressable>
         <ScrollView ref={headerRef} horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false}>
           <View style={{ width: totalW, height: m.headerH }}>
             {slots.map((t) => (
-              <Text key={t} style={[styles.slot, m.wide && styles.slotWide, { left: x(t) + 4 }]}>
+              <Text maxFontSizeMultiplier={COMPACT_TEXT} key={t} style={[styles.slot, m.wide && styles.slotWide, { left: x(t) + 4 }]}>
                 {formatTime(t)}
               </Text>
             ))}
@@ -374,7 +374,7 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
       {toast && (
         <View style={styles.toast} accessibilityLiveRegion="polite">
           <Ionicons name={toast.icon} size={18} color={colors.coffee} />
-          <Text style={styles.toastText} numberOfLines={2}>
+          <Text maxFontSizeMultiplier={COMPACT_TEXT} style={styles.toastText} numberOfLines={2}>
             {toast.text}
           </Text>
           {toast.undo && (
@@ -387,7 +387,7 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
               hitSlop={10}
               accessibilityRole="button"
             >
-              <Text style={styles.toastUndo}>Undo</Text>
+              <Text maxFontSizeMultiplier={COMPACT_TEXT} style={styles.toastUndo}>Undo</Text>
             </Pressable>
           )}
         </View>
@@ -430,9 +430,9 @@ const ChannelCell = memo(function ChannelCell({
   const label = `Channel ${channel.number}, ${channel.name}${favourite ? ', favourite' : ''}`;
   const content = m.wide ? (
     <View style={styles.channelWide}>
-      <Text style={[styles.channelNumberWide, selected && styles.selectedText]}>{channel.number}</Text>
+      <Text maxFontSizeMultiplier={COMPACT_TEXT} style={[styles.channelNumberWide, selected && styles.selectedText]}>{channel.number}</Text>
       <ChannelLogo uri={channel.logo} crop={channel.lc} dark={!!channel.dl} name={channel.name} width={84} height={34} />
-      <Text style={[nameStyle, styles.channelNameWide]} numberOfLines={1}>
+      <Text maxFontSizeMultiplier={COMPACT_TEXT} style={[nameStyle, styles.channelNameWide]} numberOfLines={1}>
         {channel.name}
       </Text>
       {star(15)}
@@ -441,13 +441,13 @@ const ChannelCell = memo(function ChannelCell({
   ) : (
     <>
       <View style={styles.channelTop}>
-        <Text style={[styles.channelNumber, selected && styles.selectedText]}>{channel.number}</Text>
+        <Text maxFontSizeMultiplier={COMPACT_TEXT} style={[styles.channelNumber, selected && styles.selectedText]}>{channel.number}</Text>
         <ChannelLogo uri={channel.logo} crop={channel.lc} dark={!!channel.dl} name={channel.name} width={62} height={24} />
       </View>
       <View style={styles.channelBottom}>
         {selected && <Ionicons name="play" size={10} color={colors.accent} />}
         {star(11)}
-        <Text style={nameStyle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+        <Text maxFontSizeMultiplier={COMPACT_TEXT} style={nameStyle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
           {channel.name}
         </Text>
       </View>
@@ -563,20 +563,20 @@ const ProgrammeRow = memo(function ProgrammeRow({
               </Pressable>
             )}
             <View style={styles.titleRow}>
-              <Text
+              <Text maxFontSizeMultiplier={COMPACT_TEXT}
                 numberOfLines={1}
                 style={[styles.title, m.wide && styles.titleWide, onLight && styles.titleOnLight, !onLight && (past || filler) && styles.titlePast]}
               >
                 {p.t}
               </Text>
               {p.l ? (
-                <Text style={[styles.badge, styles.badgeLive]}>Live</Text>
+                <Text maxFontSizeMultiplier={COMPACT_TEXT} style={[styles.badge, styles.badgeLive]}>Live</Text>
               ) : p.n ? (
-                <Text style={[styles.badge, onLight && styles.titleOnLight]}>New</Text>
+                <Text maxFontSizeMultiplier={COMPACT_TEXT} style={[styles.badge, onLight && styles.titleOnLight]}>New</Text>
               ) : null}
             </View>
             {showMeta && (
-              <Text numberOfLines={1} style={[styles.meta, onLight && styles.metaOnLight]}>
+              <Text maxFontSizeMultiplier={COMPACT_TEXT} numberOfLines={1} style={[styles.meta, onLight && styles.metaOnLight]}>
                 {formatRange(p.s, p.e)}
               </Text>
             )}

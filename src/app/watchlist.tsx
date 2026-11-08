@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   titleBar: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 4 },
   title: { color: colors.text, fontSize: 26, fontWeight: '800' },
-  reminderRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingTop: 4, paddingBottom: 8 },
+  reminderRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, rowGap: 8, paddingHorizontal: 14, paddingTop: 4, paddingBottom: 8 },
   hint: { color: colors.textDim, fontSize: 13 },
   reminderChip: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 12, borderWidth: 1, borderColor: colors.divider },
   reminderChipActive: { borderColor: colors.accent },

@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../theme';
+import { COMPACT_TEXT, colors } from '../theme';
 import { useWatchlist } from '../watchlist/WatchlistContext';
 
 /** Watchlist and search buttons at the top of each guide. */
@@ -18,7 +18,7 @@ export function HeaderActions() {
         <Ionicons name="bookmark-outline" size={24} color={colors.text} />
         {items.length > 0 && (
           <View style={styles.badge}>
-            <Text style={styles.badgeText} numberOfLines={1}>
+            <Text maxFontSizeMultiplier={COMPACT_TEXT} style={styles.badgeText} numberOfLines={1}>
               {items.length}
             </Text>
           </View>

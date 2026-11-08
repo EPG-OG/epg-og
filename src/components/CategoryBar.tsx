@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, type ScrollViewInstance } from 'react-native';
-import { colors } from '../theme';
+import { COMPACT_TEXT, colors } from '../theme';
 
 type Props = {
   categories: { id: string; name: string }[];
@@ -24,7 +24,7 @@ export function CategoryBar({ categories, selected, onSelect }: Props) {
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
           >
-            <Text style={[styles.label, active && styles.labelActive]}>{c.name}</Text>
+            <Text maxFontSizeMultiplier={COMPACT_TEXT} style={[styles.label, active && styles.labelActive]}>{c.name}</Text>
           </Pressable>
         );
       })}
