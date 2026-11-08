@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/EPG-OG/epg-og/releases/latest"><img src="https://img.shields.io/github/v/release/EPG-OG/epg-og?label=version&color=3ea4f0" alt="Latest version"></a>
   <a href="https://github.com/EPG-OG/epg-og/releases"><img src="https://img.shields.io/github/downloads/EPG-OG/epg-og/total?color=ff5fc8" alt="Downloads"></a>
-  <img src="https://img.shields.io/badge/platform-Android-3ddc84" alt="Android">
+  <img src="https://img.shields.io/badge/platform-Android%20%7C%20Web-3ddc84" alt="Android and web">
   <img src="https://img.shields.io/badge/price-free-success" alt="Free">
   <a href="https://buymeacoffee.com/epgog"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-ffdd00?logo=buymeacoffee&logoColor=000" alt="Buy me a coffee"></a>
 </p>
@@ -17,6 +17,19 @@
 ---
 
 **EPG OG** is a TV guide that looks and feels like the one on your TV box: a dark channel grid with logos, channel numbers and a live "now" line. It covers **over 400 USA and UK channels**, lets you build your own guide of **favourites**, **search** everything and **follow** your favourite shows and sports so you never miss them, and the listings refresh by themselves. It's free, with no ads, no account and no tracking.
+
+## Two ways to use it
+
+| | 📱 **Android app** | 🌐 **In your browser** |
+| --- | --- | --- |
+| **Get it** | [Download from epgog.com](https://epgog.com) | [Open epgog.com/app](https://epgog.com/app/) |
+| **Works on** | Android phones and tablets | iPhone, iPad, computers and any phone |
+| **Install** | A small download (about 24 MB) | Nothing to install |
+| **The full guide, favourites, search, follows** | ✅ | ✅ |
+| **Reminders before your shows** | ✅ | ❌ |
+| **Opens with no signal** | ✅ | ❌ |
+
+Both are free and show the same listings, which update every 6 hours. Favourites and watchlists are saved separately in each, on your own device.
 
 <table>
   <tr>
@@ -33,6 +46,7 @@
 
 ## 🆕 What's new
 
+- **Use it in your browser:** the whole guide now works at [epgog.com/app](https://epgog.com/app/), including on iPhone, with nothing to install.
 - **Favourites:** tap any channel's name to add it to your own guide, with USA and UK channels side by side. Hold and drag to put them in any order, and swipe left to remove one.
 - **Move your tabs:** hold and drag a tab at the bottom to put it where you want it.
 - **Now, Tonight, Tomorrow:** jump straight there. The guide now runs two days ahead.
@@ -109,7 +123,11 @@ When a new version comes out, the app shows a banner. Tap it to download the upd
 
 **Using [Obtainium](https://obtainium.imranr.dev)?** Tap **Get it on Obtainium** on [epgog.com](https://epgog.com), or in Obtainium tap **Add App** and paste `https://github.com/EPG-OG/epg-og`. You'll get updates straight from our GitHub releases.
 
-**On iPhone, a computer or a tablet?** Open **[epgog.com/app](https://epgog.com/app/)** in your browser for the full guide, with nothing to install. Favourites and your watchlist are saved in that browser. Show reminders need the Android app.
+## Use it in your browser
+
+On iPhone, a computer or anything else, open **[epgog.com/app](https://epgog.com/app/)** for the full guide, with nothing to install. Your favourites and watchlist are saved in that browser. Show reminders need the Android app.
+
+On a computer, scroll sideways through the guide with a trackpad, or hold **Shift** and use your mouse wheel. The **Now**, **Tonight** and **Tomorrow** buttons jump straight there.
 
 ## Support the app
 
