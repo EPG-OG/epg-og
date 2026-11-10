@@ -55,7 +55,7 @@ export function RegionGuide({ region, title }: { region: RegionKey; title: strin
         <Text style={styles.subtitle} numberOfLines={1} maxFontSizeMultiplier={COMPACT_TEXT}>
           TV Guide
         </Text>
-        <RaceTrack />
+        <RaceTrack region={region} />
         <View style={styles.actions}>
           <HeaderActions />
         </View>
