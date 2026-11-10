@@ -13,6 +13,7 @@ import { GuideGrid } from './GuideGrid';
 import { HeaderActions } from './HeaderActions';
 import { ListingsMessage } from './ListingsMessage';
 import { ProgrammeSheet } from './ProgrammeSheet';
+import { RaceTrack } from './RaceTrack';
 import { RetroTitle } from './RetroTitle';
 import { UpdateBanner } from './UpdateBanner';
 
@@ -54,6 +55,7 @@ export function RegionGuide({ region, title }: { region: RegionKey; title: strin
         <Text style={styles.subtitle} numberOfLines={1} maxFontSizeMultiplier={COMPACT_TEXT}>
           TV Guide
         </Text>
+        <RaceTrack />
         <View style={styles.actions}>
           <HeaderActions />
         </View>
