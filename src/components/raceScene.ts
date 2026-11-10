@@ -369,6 +369,78 @@ function drawScenery(ctx: CanvasRenderingContext2D, cam: Camera, width: number, 
       poly(ctx, [P(spot(3, f0, r0).p), P(spot(3, f1, r0).p), P(spot(3, f1, r1).p), P(spot(3, f0, r1).p)], (k + j) % 2 ? '#f4f4f4' : '#111');
     }
   }
+  paintLogo(ctx, cam, width);
+}
+
+// "EPG OG" painted across the banking in the middle of the view, like a track's own name painted
+// on the asphalt: the pack drives over it, and it's there on the empty track once they've gone.
+function paintLogo(ctx: CanvasRenderingContext2D, cam: Camera, width: number) {
+  const P = cam.project;
+  // Where the middle of the bar falls on the turn.
+  let fc = -1;
+  let best = 1e9;
+  for (let f = 0; f <= 1; f += 0.002) {
+    const q = P(spot(0, f, 100).p);
+    if (q && Math.abs(q[0] - width / 2) < best) [best, fc] = [Math.abs(q[0] - width / 2), f];
+  }
+  if (fc < 0 || best > 40) return;
+  // The letters run across most of the racing surface; their length is chosen so they look
+  // naturally proportioned from the camera, however much the banking is foreshortened.
+  const rTop = R_OUT - 0.7;
+  const rBottom = R_IN + 1.1;
+  const top = P(spot(0, fc, rTop).p);
+  const bottom = P(spot(0, fc, rBottom).p);
+  const a = P(spot(0, fc - 0.005, 100).p);
+  const b = P(spot(0, fc + 0.005, 100).p);
+  if (!top || !bottom || !a || !b) return;
+  const heightPx = Math.abs(bottom[1] - top[1]);
+  const pxPerF = Math.abs(a[0] - b[0]) / 0.01;
+
+  // Draw the words flat, then lay them on the track a strip at a time.
+  const words = [{ text: 'EPG', colour: '#f4f5f7' }, { text: ' OG', colour: '#3ea4f0' }];
+  const flat = document.createElement('canvas');
+  const fctx = flat.getContext('2d');
+  if (!fctx) return;
+  const font = '900 100px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+  fctx.font = font;
+  const widths = words.map((w) => fctx.measureText(w.text).width);
+  flat.width = Math.ceil(widths[0] + widths[1]) + 20;
+  flat.height = 110;
+  fctx.font = font;
+  fctx.textBaseline = 'middle';
+  let x = 10;
+  words.forEach((w, i) => {
+    fctx.fillStyle = w.colour;
+    fctx.fillText(w.text, x, 58);
+    x += widths[i];
+  });
+  const lengthPx = (flat.width / flat.height) * heightPx * 1.3;
+  const span = lengthPx / pxPerF; // in fractions of the turn
+  const cols = Math.min(240, Math.round(lengthPx * 1.5));
+  const rows = Math.max(12, Math.round(heightPx * 1.5));
+  const data = fctx.getImageData(0, 0, flat.width, flat.height).data;
+  const at = (u: number, v: number) => {
+    const i = (Math.floor(v * (flat.height - 1)) * flat.width + Math.floor(u * (flat.width - 1))) * 4;
+    return data[i + 3] > 110 ? `rgb(${data[i]},${data[i + 1]},${data[i + 2]})` : null;
+  };
+  // Left of the screen is further round the turn, so the text runs against the direction of racing.
+  const corner = (u: number, v: number) => P(spot(0, fc + span / 2 - u * span, rTop + (rBottom - rTop) * v).p);
+  for (let row = 0; row < rows; row++) {
+    const v0 = row / rows;
+    const v1 = (row + 1) / rows;
+    let start = 0;
+    let colour = at(0.5 / cols, (v0 + v1) / 2);
+    for (let col = 1; col <= cols; col++) {
+      const next = col < cols ? at((col + 0.5) / cols, (v0 + v1) / 2) : null;
+      if (next === colour) continue;
+      // Each strip overlaps the next a touch, so no seams show through the paint.
+      const u1 = Math.min(1, (col + 0.4) / cols);
+      const v2 = Math.min(1, v1 + 0.4 / rows);
+      if (colour) poly(ctx, [corner(start / cols, v0), corner(u1, v0), corner(u1, v2), corner(start / cols, v2)], colour);
+      start = col;
+      colour = next;
+    }
+  }
 }
 
 type Car = { lane: number; s0: number; livery: number; number: number };
