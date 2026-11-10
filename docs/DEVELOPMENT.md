@@ -16,6 +16,8 @@ Reminders use `expo-notifications`. They don't fire on web.
 
 The same app also runs at [epgog.com/app](https://epgog.com/app/). The listings workflow builds it on every run (`npx expo export --platform web` with `EXPO_WEB_BASE_URL=/app`, read by `app.config.js`), so it always matches the code on `main`; there's nothing separate to publish. It hides the update banner, explains that reminders need the Android app (`isWebsite` in `src/distribution.ts`), and is kept out of search results with a `noindex` tag. GitHub Pages can't serve its inner screens as files, so `site/404.html` sends a visitor who opens one directly, such as `/app/uk`, back to `/app/`.
 
+The race in the top bar on big screens is drawn by `src/components/raceScene.ts` (`RaceTrack.tsx` puts it in the bar). The front page shows the same race: the workflow turns that file into `race.js` with `scripts/build-race.mjs`, and `site/index.html` loads it. If that step fails, the front page just leaves the race out.
+
 ## How updates reach people
 
 | What changed | How it gets to installed apps |

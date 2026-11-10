@@ -24,7 +24,7 @@ export function RaceTrack() {
     canvas.style.display = 'block';
     box.appendChild(canvas);
     // Still cars for people who'd rather not have motion.
-    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 3.4 : undefined;
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 3.6 : undefined;
     const stop = startRace(canvas, Math.round(width), HEIGHT, still);
     return () => {
       stop();

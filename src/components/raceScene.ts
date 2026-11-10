@@ -25,12 +25,17 @@ const LANE_LAP = [1, 1, 1];
 const LANE_SURGE = [{ size: 3.2, period: 23, phase: 0 }, { size: 2.6, period: 31, phase: 2.1 }, { size: 3.6, period: 19, phase: 4.2 }];
 const SPEED = 82; // m/s along the middle lane
 
-// The camera, on a tower in the infield at the turn exit, zoomed in on the middle of the turn.
-const CAM_POS: V3 = [-78, 11, 26];
-const CAM_AIM: V3 = [-67.5, 0, -73.5];
-const FOV = 70; // degrees across the bar
-const SQUASH = 0.8; // vertical scale, so a view this wide fits a bar this short
-const HORIZON = 4; // px from the top of the bar
+// The camera, on a low tower in the infield just past the turn exit, looking back into the turn,
+// far enough back that every car stays in the bar as it banks round the corner.
+const CAM_POS: V3 = [-55, 6, 46];
+const CAM_AIM: V3 = [-45, 0, -90];
+const FOV = 66; // degrees across the bar
+const SQUASH = 0.65; // vertical scale, so a view this wide fits a bar this short
+const HORIZON = 24; // px from the top of the bar
+// The width the view is framed for. Narrower bars crop to the bend instead of shrinking the cars;
+// wider ones see more of the turn either side without the cars getting bigger.
+const SCENE_WIDTH = 1074;
+const FOCUS = 0.18; // where a narrow bar is centred: towards the left, keeping the corner in view
 
 // Cars are built from a stock car's side profile (metres along the car from the middle, height),
 // nose at +a, a touch taller than real so they still read in a bar this short.
@@ -128,14 +133,16 @@ function camera(width: number): Camera {
   const yaw = Math.atan2(CAM_AIM[0] - pos[0], CAM_AIM[2] - pos[2]);
   const forward: V3 = [Math.sin(yaw), 0, Math.cos(yaw)];
   const right: V3 = [-Math.cos(yaw), 0, Math.sin(yaw)]; // forward × up
-  const f = width / 2 / Math.tan((FOV * Math.PI) / 360);
+  const f = SCENE_WIDTH / 2 / Math.tan((FOV * Math.PI) / 360);
+  const crop = width < SCENE_WIDTH ? Math.min(SCENE_WIDTH - width, Math.max(0, SCENE_WIDTH * FOCUS - width / 2)) : 0;
+  const centre = width < SCENE_WIDTH ? SCENE_WIDTH / 2 - crop : width / 2;
   return {
     pos,
     project: (p) => {
       const d: V3 = [p[0] - pos[0], p[1] - pos[1], p[2] - pos[2]];
       const z = dot(d, forward);
       if (z < 2) return null;
-      return [width / 2 + (f * dot(d, right)) / z, HORIZON - (f * SQUASH * d[1]) / z, z];
+      return [centre + (f * dot(d, right)) / z, HORIZON - (f * SQUASH * d[1]) / z, z];
     },
   };
 }
@@ -162,6 +169,11 @@ function drawScenery(ctx: CanvasRenderingContext2D, cam: Camera, width: number, 
   grass.addColorStop(1, '#2f5a35');
   ctx.fillStyle = grass;
   ctx.fillRect(0, HORIZON, width, height);
+  // Mowing stripes across the infield; the track is drawn over their ends.
+  for (let z = -R_IN; z < 260; z += 14) {
+    if (Math.round((z + R_IN) / 14) % 2) continue;
+    poly(ctx, [cam.project([-R_IN, 0, z]), cam.project([R_IN, 0, z]), cam.project([R_IN, 0, z + 14]), cam.project([-R_IN, 0, z + 14])], 'rgba(255,255,255,.045)');
+  }
 
   type Item = { z: number; draw: () => void };
   const items: Item[] = [];

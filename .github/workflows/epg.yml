@@ -50,6 +50,12 @@ jobs:
       - run: npm ci
         id: deps
         continue-on-error: true
+      # The front page's race, from the same code as the browser version's. Optional: without it the
+      # front page just doesn't show the race.
+      - name: Build the front page race
+        if: steps.deps.outcome == 'success'
+        continue-on-error: true
+        run: node scripts/build-race.mjs _site/race.js
       - name: Build the browser version
         id: web
         if: steps.deps.outcome == 'success'

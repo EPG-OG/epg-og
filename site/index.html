@@ -32,6 +32,12 @@
   a { color: #3ea4f0; }
   .obtainium { background: transparent; color: #3ea4f0; border: 1px solid #3ea4f0; margin-top: 4px; }
   .coffee { background: #ffdd00; color: #0d0c22; }
+  body { overflow-x: hidden; }
+  /* The race from the browser version, edge to edge. Hidden until its script loads. */
+  .race { display: none; height: 64px; width: 100vw; margin: 24px 0 0 calc(50% - 50vw); overflow: hidden;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
+  .race.on { display: block; }
 </style>
 </head>
 <body>
@@ -39,6 +45,8 @@
   <img class="icon" src="icon.png" alt="EPG OG icon">
   <h1>EPG OG</h1>
   <p>A free TV guide for over 400 USA and UK channels: sports, entertainment, news, movies, kids and documentaries, with favourites, search, a watchlist, show reminders, and "follow" for your favourite shows and sports.</p>
+
+  <div class="race" id="race" aria-hidden="true"></div>
 
   <a class="btn" href="download">Download for Android</a><br>
   <a class="btn obtainium" href="/app/">Open in your browser</a>
@@ -74,5 +82,34 @@
   <a class="btn coffee" href="https://buymeacoffee.com/epgog">☕ Buy me a coffee</a>
   <p class="small"><a href="https://github.com/EPG-OG/epg-og/releases">All releases</a> · <a href="privacy.html">Privacy Policy</a> · <a href="mailto:support@epgog.com">Contact</a></p>
 </main>
+<script type="module">
+  // The same race as the browser version's top bar (built into race.js from raceScene.ts).
+  // If it can't load, the strip simply stays hidden.
+  const box = document.getElementById('race');
+  import('/race.js')
+    .then(({ startRace }) => {
+      box.classList.add('on');
+      const still = matchMedia('(prefers-reduced-motion: reduce)').matches ? 3.6 : undefined;
+      let stop = () => {};
+      let width = 0;
+      const run = () => {
+        if (box.clientWidth === width) return;
+        width = box.clientWidth;
+        stop();
+        box.textContent = '';
+        const canvas = document.createElement('canvas');
+        canvas.style.display = 'block';
+        box.appendChild(canvas);
+        stop = startRace(canvas, width, 64, still);
+      };
+      run();
+      let timer;
+      addEventListener('resize', () => {
+        clearTimeout(timer);
+        timer = setTimeout(run, 200);
+      });
+    })
+    .catch(() => {});
+</script>
 </body>
 </html>
