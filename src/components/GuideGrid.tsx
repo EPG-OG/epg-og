@@ -8,6 +8,7 @@ import { COMPACT_TEXT, colors } from '../theme';
 import { atLocalHour, floorToHalfHour, formatDay, formatRange, formatTime } from '../time';
 import { useWatchlist } from '../watchlist/WatchlistContext';
 import { ArrangeableCell } from './ArrangeableCell';
+import { useMouseDragScroll } from './useMouseDragScroll';
 import { ChannelLogo } from './ChannelLogo';
 
 type Props = {
@@ -233,6 +234,22 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
     opened.current = false;
   }, [from, m.pxPerMin]);
 
+  // In the browser, the mouse can grab the guide anywhere and drag it through the day and the
+  // channels. On Favourites, a press on a channel is left for moving or removing it.
+  const rootRef = useRef<ComponentRef<typeof View>>(null);
+  useMouseDragScroll({
+    nodes: () => {
+      const scrollable = (r: typeof gridRef) => (r.current as unknown as { getScrollableNode?: () => HTMLElement } | null)?.getScrollableNode?.() ?? null;
+      return { box: rootRef.current as unknown as HTMLElement | null, horizontal: scrollable(gridRef), vertical: scrollable(listRef) };
+    },
+    ignore: (e) => {
+      if (listLocked) return true;
+      if (!arrange) return false;
+      const list = (listBoxRef.current as unknown as HTMLElement | null)?.getBoundingClientRect();
+      return !!list && e.clientY >= list.top && e.clientX < list.left + m.channelW;
+    },
+  });
+
   const selectAndOpen = useCallback(
     (channel: Channel, p: Programme) => {
       setSelectedId(channel.id);
@@ -242,7 +259,7 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
   );
 
   return (
-    <View style={styles.root}>
+    <View ref={rootRef} style={styles.root}>
       <View style={styles.jumps}>
         {jumps.map((j) => {
           const active = j.id === activeJump;
