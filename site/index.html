@@ -37,7 +37,13 @@
   .race { display: none; height: 64px; width: 100vw; margin: 24px 0 0 calc(50% - 50vw); overflow: hidden;
     -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
     mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
-  .race.on { display: block; }
+  .race.on { display: block; position: relative; cursor: pointer; }
+  .race canvas { display: block; }
+  /* Pause/play: shown on hover or keyboard focus, and always while paused. */
+  .race button { position: absolute; right: 48px; bottom: 6px; width: 26px; height: 26px; border-radius: 13px; border: 0; padding: 0;
+    display: flex; align-items: center; justify-content: center; background: rgba(12,14,18,.78); color: #f2f3f5; cursor: pointer;
+    opacity: 0; transition: opacity .2s; }
+  .race:hover button, .race button:focus-visible, .race.paused button { opacity: 1; }
 </style>
 </head>
 <body>
@@ -84,25 +90,54 @@
 </main>
 <script type="module">
   // The same race as the browser version's top bar (built into race.js from raceScene.ts).
-  // If it can't load, the strip simply stays hidden.
+  // Clicking it pauses or plays it, remembered (and shared with the browser version). If it
+  // can't load, the strip simply stays hidden.
   const box = document.getElementById('race');
+  const KEY = 'top-bar-animation-paused:v1';
+  const PLAY = '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg>';
+  const PAUSE = '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M4 2.5h3v11H4zm5 0h3v11H9z" fill="currentColor"/></svg>';
   import('/race.js')
     .then(({ startRace }) => {
       box.classList.add('on');
-      const still = matchMedia('(prefers-reduced-motion: reduce)').matches ? 3.6 : undefined;
-      let stop = () => {};
+      let stored = false;
+      try { stored = localStorage.getItem(KEY) === '1'; } catch {}
+      let paused = stored || matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let scene = () => {};
+      let moving = false;
       let width = 0;
+      const canvas = document.createElement('canvas');
+      canvas.setAttribute('aria-hidden', 'true');
+      const button = document.createElement('button');
+      button.type = 'button';
+      box.append(canvas, button);
+      const refresh = () => {
+        box.classList.toggle('paused', paused);
+        button.innerHTML = paused ? PLAY : PAUSE;
+        button.setAttribute('aria-label', paused ? 'Play the animation' : 'Pause the animation');
+        button.title = button.getAttribute('aria-label');
+      };
       const run = () => {
         if (box.clientWidth === width) return;
         width = box.clientWidth;
-        stop();
-        box.textContent = '';
-        const canvas = document.createElement('canvas');
-        canvas.style.display = 'block';
-        box.appendChild(canvas);
-        stop = startRace(canvas, width, 64, still);
+        scene();
+        // Paused: a still moment of the race, until asked to play.
+        scene = startRace(canvas, width, 64, paused ? 3.6 : undefined);
+        moving = !paused;
       };
+      box.addEventListener('click', () => {
+        paused = !paused;
+        try { localStorage.setItem(KEY, paused ? '1' : '0'); } catch {}
+        if (!paused && !moving) {
+          scene();
+          scene = startRace(canvas, width, 64);
+          moving = true;
+        } else if (scene.setPaused) {
+          scene.setPaused(paused);
+        }
+        refresh();
+      });
       run();
+      refresh();
       let timer;
       addEventListener('resize', () => {
         clearTimeout(timer);

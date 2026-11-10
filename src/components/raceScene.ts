@@ -64,6 +64,27 @@ const LIVERIES: [string, string][] = [
 
 const SUN: V3 = norm([-0.35, 0.85, -0.4]);
 
+// The scene follows the visitor's own clock: a sunny afternoon, a warm dusk with the floodlights
+// coming on, or a night race under the lights. Stock cars have no working headlights (only
+// stickers), so at night the floodlights light everything.
+export type TimeOfDay = 'day' | 'dusk' | 'night';
+export function timeOfDayNow(date = new Date()): TimeOfDay {
+  const h = date.getHours() + date.getMinutes() / 60;
+  if (h >= 19.5 || h < 5.5) return 'night';
+  if (h >= 17.5 || h < 7) return 'dusk';
+  return 'day';
+}
+type Look = { stand: string; roof: string; crowd: number; carLight: number; dim: string | null; warm: string | null; lights: number };
+const LOOKS: Record<TimeOfDay, Look> = {
+  day: { stand: '#2b2f37', roof: '#474d57', crowd: 0.7, carLight: 1, dim: null, warm: null, lights: 0 },
+  dusk: { stand: '#29272e', roof: '#45404a', crowd: 0.6, carLight: 0.93, dim: 'rgb(222,206,210)', warm: 'rgba(255,138,64,.22)', lights: 0.55 },
+  night: { stand: '#14161c', roof: '#20232a', crowd: 0.42, carLight: 0.9, dim: 'rgb(140,150,184)', warm: null, lights: 1 },
+};
+
+/** A running scene: call it to stop; `setPaused` freezes and restarts it. */
+export type SceneHandle = (() => void) & { setPaused: (paused: boolean) => void };
+const noScene = (): SceneHandle => Object.assign(() => {}, { setPaused: () => {} });
+
 function norm(v: V3): V3 {
   const l = Math.hypot(v[0], v[1], v[2]) || 1;
   return [v[0] / l, v[1] / l, v[2] / l];
@@ -157,7 +178,7 @@ function poly(ctx: CanvasRenderingContext2D, pts: ([number, number, number] | nu
 }
 
 // Everything that doesn't move, behind the garages' depth or not: drawn far to near.
-function drawScenery(ctx: CanvasRenderingContext2D, cam: Camera, width: number, height: number) {
+function drawScenery(ctx: CanvasRenderingContext2D, cam: Camera, width: number, height: number, look: Look) {
   const sky = ctx.createLinearGradient(0, 0, 0, HORIZON + 4);
   sky.addColorStop(0, '#1a1d22');
   sky.addColorStop(1, '#262a31');
@@ -196,12 +217,12 @@ function drawScenery(ctx: CanvasRenderingContext2D, cam: Camera, width: number, 
       items.push({
         z: z + 400,
         draw: () => {
-          poly(ctx, q, '#2b2f37');
+          poly(ctx, q, look.stand);
           // Fans.
           // As many fans as fit the stand's size on screen, so near stands look as packed as far ones.
           const area = q.every(Boolean) ? Math.abs(q.reduce((t, v, i) => t + v![0] * q[(i + 1) % 4]![1] - q[(i + 1) % 4]![0] * v![1], 0)) / 2 : 0;
           const n = Math.min(1600, Math.round(area / 2));
-          ctx.globalAlpha = 0.7;
+          ctx.globalAlpha = look.crowd;
           for (let k = 0; k < n; k++) {
             const u = rand();
             const v = f0 + (f1 - f0) * rand();
@@ -217,7 +238,7 @@ function drawScenery(ctx: CanvasRenderingContext2D, cam: Camera, width: number, 
           const b = P(spot(section, f1, standR1, standY(1) + 4).p);
           const c = P(spot(section, f1, standR1 - 8, standY(1) + 4).p);
           const d = P(spot(section, f0, standR1 - 8, standY(1) + 4).p);
-          poly(ctx, [a, b, c, d], '#474d57');
+          poly(ctx, [a, b, c, d], look.roof);
         },
       });
     }
@@ -370,6 +391,72 @@ function drawScenery(ctx: CanvasRenderingContext2D, cam: Camera, width: number, 
     }
   }
   paintLogo(ctx, cam, width);
+  lightScene(ctx, cam, width, height, look);
+}
+
+// Dusk and night: tint and dim the whole scene, then the floodlights along the outside of the turn
+// light it back up, with pools of light on the banking beneath them.
+function lightScene(ctx: CanvasRenderingContext2D, cam: Camera, width: number, height: number, look: Look) {
+  if (!look.dim && !look.warm) return;
+  const P = cam.project;
+  ctx.save();
+  if (look.dim) {
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = look.dim;
+    ctx.fillRect(0, 0, width, height);
+  }
+  if (look.warm) {
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.fillStyle = look.warm;
+    ctx.fillRect(0, 0, width, height);
+  }
+  if (look.lights > 0) {
+    const poles: Spot[] = [];
+    for (let f = 0.02; f < 1; f += 45 / (Math.PI * R_OUT)) poles.push(spot(0, f, R_OUT + 5));
+    for (const section of [1, 3]) for (let d = 45; d < 160; d += 45) poles.push(spot(section, section === 1 ? d / STRAIGHT : 1 - d / STRAIGHT, R_OUT + 5));
+    // Pools of light on the track.
+    ctx.globalCompositeOperation = 'screen';
+    for (const pole of poles) {
+      const centre = P(add(pole.p, mul(pole.out, -13)));
+      const edge = P(add(add(pole.p, mul(pole.out, -13)), mul(pole.t, 15)));
+      if (!centre || !edge) continue;
+      const r = Math.max(8, Math.hypot(edge[0] - centre[0], edge[1] - centre[1]));
+      const g = ctx.createRadialGradient(centre[0], centre[1], 0, centre[0], centre[1], r);
+      g.addColorStop(0, `rgba(255,246,222,${0.26 * look.lights})`);
+      g.addColorStop(1, 'rgba(255,246,222,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(centre[0], centre[1], r, r * 0.16, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // The poles, their lamp heads, and the glow round them.
+    ctx.globalCompositeOperation = 'source-over';
+    for (const pole of poles) {
+      const base = P(add(pole.p, [0, 1.3, 0]));
+      const top = P(add(pole.p, [0, 34, 0]));
+      if (!base || !top) continue;
+      ctx.strokeStyle = '#3b4049';
+      ctx.lineWidth = Math.max(0.6, 50 / base[2]);
+      ctx.beginPath();
+      ctx.moveTo(base[0], base[1]);
+      ctx.lineTo(top[0], top[1]);
+      ctx.stroke();
+      const lamp = [top[0], Math.max(1.5, top[1])];
+      const size = Math.max(1.6, 260 / top[2]);
+      ctx.fillStyle = '#fff6dc';
+      ctx.fillRect(lamp[0] - size, lamp[1] - size * 0.4, size * 2, size * 0.8);
+      ctx.globalCompositeOperation = 'lighter';
+      const glowR = Math.max(9, 1300 / top[2]);
+      const g = ctx.createRadialGradient(lamp[0], lamp[1], 0, lamp[0], lamp[1], glowR);
+      g.addColorStop(0, `rgba(255,240,205,${0.34 * look.lights})`);
+      g.addColorStop(0.35, `rgba(255,232,190,${0.08 * look.lights})`);
+      g.addColorStop(1, 'rgba(255,232,190,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(lamp[0] - glowR, lamp[1] - glowR, glowR * 2, glowR * 2);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+  }
+  ctx.restore();
 }
 
 // "EPG OG" painted across the banking in the middle of the view, like a track's own name painted
@@ -500,12 +587,12 @@ function decal(ctx: CanvasRenderingContext2D, cam: Camera, dpr: number, origin: 
   ctx.restore();
 }
 
-function drawCar(ctx: CanvasRenderingContext2D, cam: Camera, dpr: number, fr: Frame, livery: [string, string], number: number) {
+function drawCar(ctx: CanvasRenderingContext2D, cam: Camera, dpr: number, fr: Frame, livery: [string, string], number: number, bright = 1) {
   const { at, lat, up } = fr;
   const point = (a: number, w: number, h: number) => add(add(add(at.p, mul(at.t, a)), mul(lat, w)), mul(up, h));
   const P = cam.project;
   const toCam = (c: V3) => norm(add(cam.pos, mul(c, -1)));
-  const light = (n: V3) => 0.5 + 0.55 * Math.max(0, dot(n, SUN));
+  const light = (n: V3) => (0.5 + 0.55 * Math.max(0, dot(n, SUN))) * bright;
   const [body, trim] = livery;
   const numberFill = isLight(body) ? '#15171b' : '#ffffff';
   const numberEdge = isLight(body) ? '#ffffff' : '#15171b';
@@ -614,18 +701,19 @@ function drawShadow(ctx: CanvasRenderingContext2D, cam: Camera, fr: Frame) {
 
 /**
  * Starts the scene on `canvas` (sized `width` × `height` CSS px). With `stillAt`, draws just that
- * moment (seconds in) and stops. Returns a function that stops it.
+ * moment (seconds in) and stops. `time` picks day, dusk or night (the visitor's clock otherwise).
  */
-export function startRace(canvas: HTMLCanvasElement, width: number, height: number, stillAt?: number) {
+export function startRace(canvas: HTMLCanvasElement, width: number, height: number, stillAt?: number, options: { time?: TimeOfDay } = {}): SceneHandle {
   const still = stillAt !== undefined;
-  if (width < 1 || height < 1) return () => {};
+  if (width < 1 || height < 1) return noScene();
+  const look = LOOKS[options.time ?? timeOfDayNow()];
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   canvas.width = Math.round(width * dpr);
   canvas.height = Math.round(height * dpr);
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
   const ctx = canvas.getContext('2d');
-  if (!ctx) return () => {};
+  if (!ctx) return noScene();
   const cam = camera(width);
 
   const layer = (draw: (c: CanvasRenderingContext2D) => void) => {
@@ -637,13 +725,14 @@ export function startRace(canvas: HTMLCanvasElement, width: number, height: numb
     draw(x);
     return c;
   };
-  const scenery = layer((x) => drawScenery(x, cam, width, height));
+  const scenery = layer((x) => drawScenery(x, cam, width, height, look));
 
   const cars = field();
   const baseLap = lapLength(LANES[1]) / SPEED;
   let frame = 0;
   // The pack arrives about a second after the page opens.
-  const start = performance.now() - 500;
+  let start = performance.now() - 500;
+  let pausedAt = 0;
 
   const render = (now: number) => {
     frame = still ? 0 : requestAnimationFrame(render);
@@ -665,9 +754,23 @@ export function startRace(canvas: HTMLCanvasElement, width: number, height: numb
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const frames = shown.map((p) => ({ ...p, fr: carFrame(p.at) }));
     for (const { fr } of frames) drawShadow(ctx, cam, fr);
-    for (const { c, fr } of frames) drawCar(ctx, cam, dpr, fr, LIVERIES[c.livery], c.number);
+    for (const { c, fr } of frames) drawCar(ctx, cam, dpr, fr, LIVERIES[c.livery], c.number, look.carLight);
   };
   if (still) render(start + stillAt * 1000);
   else frame = requestAnimationFrame(render);
-  return () => cancelAnimationFrame(frame);
+  const stop = () => cancelAnimationFrame(frame);
+  return Object.assign(stop, {
+    // Freezes on the current frame; on resuming, the race carries on from the same moment.
+    setPaused: (paused: boolean) => {
+      if (still) return;
+      if (paused && !pausedAt) {
+        pausedAt = performance.now();
+        cancelAnimationFrame(frame);
+      } else if (!paused && pausedAt) {
+        start += performance.now() - pausedAt;
+        pausedAt = 0;
+        frame = requestAnimationFrame(render);
+      }
+    },
+  });
 }

@@ -31,6 +31,26 @@ const KITS = [
 const SKIN = ['#f1c9a5', '#e0ac7e', '#c68a5b', '#8d5a3b', '#5c3a24'];
 const HAIR = ['#1d1612', '#3a2a1c', '#6b4a2a', '#c9a35a', '#121212'];
 
+// The match follows the visitor's own clock: an afternoon kick-off, a dusk game with the
+// floodlights coming on, or a night game under the lights.
+export type TimeOfDay = 'day' | 'dusk' | 'night';
+export function timeOfDayNow(date = new Date()): TimeOfDay {
+  const h = date.getHours() + date.getMinutes() / 60;
+  if (h >= 19.5 || h < 5.5) return 'night';
+  if (h >= 17.5 || h < 7) return 'dusk';
+  return 'day';
+}
+type Look = { stand: string; crowd: number; dim: string | null; warm: string | null; lights: number };
+const LOOKS: Record<TimeOfDay, Look> = {
+  day: { stand: '#2b2f37', crowd: 0.72, dim: null, warm: null, lights: 0 },
+  dusk: { stand: '#29272e', crowd: 0.62, dim: 'rgb(214,196,204)', warm: 'rgba(255,138,64,.2)', lights: 0.55 },
+  night: { stand: '#14161c', crowd: 0.45, dim: 'rgb(110,120,158)', warm: null, lights: 1 },
+};
+
+/** A running scene: call it to stop; `setPaused` freezes and restarts it. */
+export type SceneHandle = (() => void) & { setPaused: (paused: boolean) => void };
+const noScene = (): SceneHandle => Object.assign(() => {}, { setPaused: () => {} });
+
 function seeded(seed: number) {
   return () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 }
@@ -63,7 +83,7 @@ function poly(ctx: CanvasRenderingContext2D, pts: [number, number][], fill: stri
 
 // --- The ground, stands and goals, drawn once ------------------------------------------------
 
-function drawPanorama(ctx: CanvasRenderingContext2D, v: View, panoWidth: number, height: number) {
+function drawPanorama(ctx: CanvasRenderingContext2D, v: View, panoWidth: number, height: number, look: Look) {
   const X = (a: number) => panoWidth / 2 + v.f * a;
   const P = (x: number, h: number, z: number): [number, number] => {
     const q = v.at(x, h, z);
@@ -88,10 +108,10 @@ function drawPanorama(ctx: CanvasRenderingContext2D, v: View, panoWidth: number,
       const w0 = i / steps;
       const w1 = (i + 1) / steps;
       const q = [corner(0, w0), corner(0, w1), corner(1, w1), corner(1, w0)].map(([x, h, z]) => P(x, h, z));
-      poly(ctx, q, '#2b2f37');
+      poly(ctx, q, look.stand);
       const area = Math.abs(q.reduce((t, p, k) => t + p[0] * q[(k + 1) % 4][1] - q[(k + 1) % 4][0] * p[1], 0)) / 2;
       const n = Math.min(2400, Math.round(area / 2));
-      ctx.globalAlpha = 0.72;
+      ctx.globalAlpha = look.crowd;
       for (let k = 0; k < n; k++) {
         const [x, h, z] = corner(rand(), w0 + (w1 - w0) * rand());
         const q2 = v.at(x, h, z);
@@ -189,6 +209,46 @@ function drawPanorama(ctx: CanvasRenderingContext2D, v: View, panoWidth: number,
     frame.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
     ctx.stroke();
   }
+
+  // Dusk and night. The floodlit pitch keeps its colour; the stands above it fall into shadow.
+  if (look.dim || look.warm) {
+    ctx.save();
+    const farY = v.at(0, 0, WIDTH).y;
+    if (look.dim) {
+      const shade = ctx.createLinearGradient(0, 0, 0, farY + 3);
+      shade.addColorStop(0, look.dim);
+      shade.addColorStop(0.75, look.dim);
+      shade.addColorStop(1, '#ffffff');
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = shade;
+      ctx.fillRect(0, 0, panoWidth, height);
+    }
+    if (look.warm) {
+      ctx.globalCompositeOperation = 'soft-light';
+      ctx.fillStyle = look.warm;
+      ctx.fillRect(0, 0, panoWidth, height);
+    }
+    // Floodlights: a row along the roof of the far stand, and masts at the far corners.
+    const lamps: [number, number, number][] = [];
+    for (let x = -66; x <= 66; x += 11) lamps.push([x, 31, WIDTH + 44]);
+    for (const side of [-1, 1]) lamps.push([side * (HALF + 26), 46, WIDTH + 30]);
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [x, h, z] of lamps) {
+      const q = v.at(x, h, z);
+      const lx = X(q.a);
+      const ly = Math.max(1.5, q.y);
+      const glowR = Math.max(14, 2200 / q.d);
+      const g = ctx.createRadialGradient(lx, ly, 0, lx, ly, glowR);
+      g.addColorStop(0, `rgba(255,248,226,${0.55 * look.lights})`);
+      g.addColorStop(0.3, `rgba(255,244,214,${0.16 * look.lights})`);
+      g.addColorStop(1, 'rgba(255,244,214,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(lx - glowR, ly - glowR, glowR * 2, glowR * 2);
+      ctx.fillStyle = `rgba(255,252,240,${0.9 * look.lights})`;
+      ctx.fillRect(lx - 2, ly - 0.8, 4, 1.6);
+    }
+    ctx.restore();
+  }
 }
 
 // --- The match ---------------------------------------------------------------------------------
@@ -215,6 +275,8 @@ type Match = {
   kickoffTeam: 0 | 1;
   lastGoalAt: number;
   yaw: number;
+  dive: { keeper: number; t0: number; side: number } | null; // side: which way along the goal line
+  net: { side: number; z: number; h: number; t0: number } | null; // where a goal hit the net
 };
 
 const FORMATION: [number, number][] = [
@@ -241,7 +303,7 @@ function newMatch(): Match {
   const m: Match = {
     t: 0, rand, players, ref: { x: -6, z: 20, vx: 0, vz: 0, stride: 0, face: 1 }, ball: { x: 0, z: 34, h: 0 },
     phase: 'kickoff', phaseEnd: 1.2, owner: -1, receiver: -1, flight: null, goalBound: false, dribble: { x: 1, z: 0 },
-    score: [0, 0], scorer: -1, kickoffTeam: 0, lastGoalAt: -99, yaw: 0,
+    score: [0, 0], scorer: -1, kickoffTeam: 0, lastGoalAt: -99, yaw: 0, dive: null, net: null,
   };
   setKickoff(m, 0);
   return m;
@@ -346,7 +408,7 @@ function step(m: Match, dt: number) {
       m.lastGoalAt = m.t;
       m.phase = 'goal';
       m.phaseEnd = m.t + 4.5;
-      m.ball = { x: goalX(team) + dir(team) * 1.6, z: m.flight.z1, h: 0.3 };
+      m.net = { side: dir(team), z: m.flight.z1, h: m.flight.h1, t0: m.t };
       m.flight = null;
     } else {
       m.owner = m.receiver;
@@ -367,8 +429,21 @@ function step(m: Match, dt: number) {
     m.phaseEnd = m.t + 1;
   }
 
+  // The keeper goes full length part way through the shot: towards the ball, or the wrong way.
+  if (m.phase === 'shot' && m.flight && !m.dive && m.t >= m.flight.t0 + m.flight.dur * 0.4) {
+    const keeper = P[m.receiver];
+    let side = Math.sign(m.flight.z1 - keeper.z) || 1;
+    if (m.goalBound && m.rand() < 0.5) side = -side;
+    m.dive = { keeper: m.receiver, t0: m.t, side };
+  }
+  if (m.dive && m.t > m.dive.t0 + 1.7) m.dive = null;
+
   // Ball.
-  if (m.flight) {
+  if (m.phase === 'goal' && m.net) {
+    const k = Math.min(1, (m.t - m.net.t0) / 0.22);
+    const drop = Math.min(1, (m.t - m.net.t0) / 0.9);
+    m.ball = { x: m.net.side * (HALF + 0.2 + k * (GOAL_D - 0.4)), z: m.net.z, h: Math.max(0.11, m.net.h * (1 - drop)) };
+  } else if (m.flight) {
     const f = m.flight;
     const k = Math.min(1, (m.t - f.t0) / f.dur);
     m.ball = { x: f.x0 + (f.x1 - f.x0) * k, z: f.z0 + (f.z1 - f.z0) * k, h: f.h1 * k + 4 * f.peak * k * (1 - k) };
@@ -377,7 +452,8 @@ function step(m: Match, dt: number) {
     const speed = Math.hypot(c.vx, c.vz);
     const fx = speed > 0.5 ? c.vx / speed : dir(c.team);
     const fz = speed > 0.5 ? c.vz / speed : 0;
-    m.ball = { x: c.x + fx * 0.7, z: c.z + fz * 0.7, h: c.keeper && m.phase === 'held' ? 1.1 : 0 };
+    const down = m.dive && m.dive.keeper === m.owner && m.t < m.dive.t0 + 1.2;
+    m.ball = { x: c.x + fx * 0.7, z: c.z + fz * 0.7, h: c.keeper && m.phase === 'held' ? (down ? 0.35 : 1.1) : 0 };
   }
 
   // Where everyone wants to be.
@@ -444,6 +520,13 @@ function step(m: Match, dt: number) {
         dz += (sz / Math.sqrt(s2)) * 2;
       }
     }
+    if (m.dive && m.dive.keeper === i) {
+      const since = m.t - m.dive.t0;
+      p.vx = 0;
+      p.vz = since < 0.45 ? m.dive.side * 6.5 : 0;
+      p.z = Math.max(34 - GOAL_HALF - 1, Math.min(34 + GOAL_HALF + 1, p.z + p.vz * dt));
+      return;
+    }
     const dist = Math.hypot(dx, dz);
     const want = Math.min(speed, dist * 1.4);
     const ux = dist > 0.01 ? (dx / dist) * want : 0;
@@ -477,7 +560,7 @@ function step(m: Match, dt: number) {
 
 // --- Drawing the players ----------------------------------------------------------------------
 
-type Body = { x: number; z: number; stride: number; face: number; moving: number; shirt: string; shorts: string; socks: string; skin: string; hair: string };
+type Body = { x: number; z: number; stride: number; face: number; moving: number; shirt: string; shorts: string; socks: string; skin: string; hair: string; lean?: number; lift?: number };
 
 function drawPerson(ctx: CanvasRenderingContext2D, v: View, sx: (a: number) => number, b: Body) {
   const q = v.at(b.x, 0, b.z);
@@ -490,7 +573,13 @@ function drawPerson(ctx: CanvasRenderingContext2D, v: View, sx: (a: number) => n
   ctx.beginPath();
   ctx.ellipse(x + H * 0.08, foot, H * 0.26, Math.max(0.6, H * 0.06), 0, 0, Math.PI * 2);
   ctx.fill();
-  const swing = Math.sin(b.stride) * Math.min(1, b.moving / 2);
+  ctx.save();
+  if (b.lean || b.lift) {
+    ctx.translate(x, foot - (b.lift ?? 0) * H);
+    ctx.rotate(b.lean ?? 0);
+    ctx.translate(-x, -foot);
+  }
+  const swing = b.lean ? 0 : Math.sin(b.stride) * Math.min(1, b.moving / 2);
   const hip = foot - H * 0.47;
   ctx.lineCap = 'round';
   // Legs: socks below the knee, shorts at the top.
@@ -544,6 +633,45 @@ function drawPerson(ctx: CanvasRenderingContext2D, v: View, sx: (a: number) => n
   ctx.beginPath();
   ctx.arc(x, headY - H * 0.015, Math.max(0.9, H * 0.075), Math.PI, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
+}
+
+// After a goal the net billows out round where the ball hit it, then settles.
+function drawNetBulge(ctx: CanvasRenderingContext2D, v: View, sx: (a: number) => number, net: { side: number; z: number; h: number; t0: number }, t: number) {
+  const since = t - net.t0;
+  if (since < 0 || since > 1.6) return;
+  const strength = Math.exp(-since * 2.6) * (0.75 + 0.25 * Math.cos(since * 13));
+  const g = net.side * HALF;
+  const bulge = (z: number, h: number) => net.side * strength * 0.9 * Math.exp(-((z - net.z) ** 2) / 4 - ((h - net.h) ** 2) / 1.6);
+  const P = (x: number, h: number, z: number): [number, number] => {
+    const q = v.at(x, h, z);
+    return [sx(q.a), q.y];
+  };
+  ctx.strokeStyle = 'rgba(240,244,250,.6)';
+  ctx.lineWidth = 0.6;
+  for (let k = 0; k <= 8; k++) {
+    const z = 34 - GOAL_HALF + (2 * GOAL_HALF * k) / 8;
+    ctx.beginPath();
+    for (let j = 0; j <= 6; j++) {
+      const h = GOAL_H * (1 - j / 6);
+      const x = g + net.side * GOAL_D * Math.min(1, 0.25 + j / 6) + bulge(z, h);
+      const [px, py] = j === 0 ? P(g, GOAL_H, z) : P(x, h * 0.85, z);
+      if (j === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+  for (let j = 1; j <= 3; j++) {
+    const h = (GOAL_H * 0.8 * j) / 4;
+    ctx.beginPath();
+    for (let k = 0; k <= 12; k++) {
+      const z = 34 - GOAL_HALF + (2 * GOAL_HALF * k) / 12;
+      const [px, py] = P(g + net.side * GOAL_D + bulge(z, h), h, z);
+      if (k === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
 }
 
 function drawBall(ctx: CanvasRenderingContext2D, v: View, sx: (a: number) => number, ball: { x: number; z: number; h: number }) {
@@ -595,18 +723,19 @@ function drawScore(ctx: CanvasRenderingContext2D, m: Match, clock: number) {
 
 /**
  * Starts the match on `canvas` (sized `width` × `height` CSS px). With `stillAt`, draws just that
- * moment (seconds in) and stops. Returns a function that stops it.
+ * moment (seconds in) and stops. `time` picks day, dusk or night (the visitor's clock otherwise).
  */
-export function startMatch(canvas: HTMLCanvasElement, width: number, height: number, stillAt?: number) {
+export function startMatch(canvas: HTMLCanvasElement, width: number, height: number, stillAt?: number, options: { time?: TimeOfDay } = {}): SceneHandle {
   const still = stillAt !== undefined;
-  if (width < 1 || height < 1) return () => {};
+  if (width < 1 || height < 1) return noScene();
+  const look = LOOKS[options.time ?? timeOfDayNow()];
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   canvas.width = Math.round(width * dpr);
   canvas.height = Math.round(height * dpr);
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
   const ctx = canvas.getContext('2d');
-  if (!ctx) return () => {};
+  if (!ctx) return noScene();
   const v = view();
 
   // The panorama covers everywhere the camera can turn to, plus the bar's own width.
@@ -617,7 +746,7 @@ export function startMatch(canvas: HTMLCanvasElement, width: number, height: num
   pano.height = canvas.height;
   const pctx = pano.getContext('2d')!;
   pctx.scale(dpr, dpr);
-  drawPanorama(pctx, v, panoWidth, height);
+  drawPanorama(pctx, v, panoWidth, height, look);
 
   const m = newMatch();
   let spare = 0;
@@ -635,13 +764,28 @@ export function startMatch(canvas: HTMLCanvasElement, width: number, height: num
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(pano, Math.round(left * dpr), 0, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const people: { d: number; draw: () => void }[] = m.players.map((p) => {
+    const people: { d: number; draw: () => void }[] = m.players.map((p, i) => {
       const kit = KITS[p.team];
+      // A diving keeper leans right over towards the side he's diving, then gets back up.
+      let lean = 0;
+      let lift = 0;
+      if (m.dive && m.dive.keeper === i) {
+        const since = m.t - m.dive.t0;
+        const over = since < 1.1 ? Math.min(1, since / 0.28) : Math.max(0, 1 - (since - 1.1) / 0.5);
+        const gx = goalX(1 - p.team);
+        const screenSide = Math.sign(sx(v.at(gx, 0, 35).a) - sx(v.at(gx, 0, 33).a)) * m.dive.side || 1;
+        lean = screenSide * over * 1.3;
+        lift = since < 0.45 ? Math.sin((since / 0.45) * Math.PI) * 0.22 : 0;
+      }
       return {
         d: v.at(p.x, 0, p.z).d,
-        draw: () => drawPerson(ctx, v, sx, { x: p.x, z: p.z, stride: p.stride, face: p.face, moving: Math.hypot(p.vx, p.vz), shirt: p.keeper ? kit.keeper : kit.shirt, shorts: p.keeper ? kit.keeperShorts : kit.shorts, socks: p.keeper ? kit.keeper : kit.socks, skin: p.skin, hair: p.hair }),
+        draw: () => drawPerson(ctx, v, sx, { x: p.x, z: p.z, stride: p.stride, face: p.face, moving: Math.hypot(p.vx, p.vz), shirt: p.keeper ? kit.keeper : kit.shirt, shorts: p.keeper ? kit.keeperShorts : kit.shorts, socks: p.keeper ? kit.keeper : kit.socks, skin: p.skin, hair: p.hair, lean, lift }),
       };
     });
+    if (m.net && m.phase === 'goal') {
+      const net = m.net;
+      people.push({ d: v.at(net.side * (HALF + GOAL_D), 0, net.z).d + 0.5, draw: () => drawNetBulge(ctx, v, sx, net, m.t) });
+    }
     const r = m.ref;
     people.push({ d: v.at(r.x, 0, r.z).d, draw: () => drawPerson(ctx, v, sx, { x: r.x, z: r.z, stride: r.stride, face: r.face, moving: Math.hypot(r.vx, r.vz), shirt: '#16181c', shorts: '#16181c', socks: '#16181c', skin: SKIN[1], hair: HAIR[0] }) });
     people.push({ d: v.at(m.ball.x, 0, m.ball.z).d - 0.3, draw: () => drawBall(ctx, v, sx, m.ball) });
@@ -653,10 +797,11 @@ export function startMatch(canvas: HTMLCanvasElement, width: number, height: num
   if (still) {
     advance(stillAt);
     draw(stillAt);
-    return () => {};
+    return noScene();
   }
   const start = performance.now();
   let last = start;
+  let paused = false;
   const render = (now: number) => {
     frame = requestAnimationFrame(render);
     // Pause while the guide it's in is hidden (the other country's tab).
@@ -669,5 +814,17 @@ export function startMatch(canvas: HTMLCanvasElement, width: number, height: num
     draw(m.t);
   };
   frame = requestAnimationFrame(render);
-  return () => cancelAnimationFrame(frame);
+  const stop = () => cancelAnimationFrame(frame);
+  return Object.assign(stop, {
+    // Freezes on the current frame; on resuming, play carries on from the same moment.
+    setPaused: (pause: boolean) => {
+      if (pause === paused) return;
+      paused = pause;
+      if (pause) cancelAnimationFrame(frame);
+      else {
+        last = performance.now();
+        frame = requestAnimationFrame(render);
+      }
+    },
+  });
 }

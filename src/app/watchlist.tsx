@@ -4,6 +4,7 @@ import { Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChannelLogo } from '../components/ChannelLogo';
 import { FollowingPanel } from '../components/FollowingPanel';
+import { isWebsite } from '../distribution';
 import { REMINDER_OPTIONS, usePreferences } from '../preferences/PreferencesContext';
 import { colors } from '../theme';
 import { formatDay, formatRange } from '../time';
@@ -39,8 +40,9 @@ export default function WatchlistScreen() {
         <Text style={styles.title}>Watchlist</Text>
       </View>
       <View style={styles.reminderRow}>
-        <Ionicons name="notifications-outline" size={15} color={colors.textDim} />
-        <Text style={styles.hint}>Remind me</Text>
+        <Ionicons name={isWebsite ? 'calendar-outline' : 'notifications-outline'} size={15} color={colors.textDim} />
+        {/* The browser can't send reminders, so there this sets the alert on "Add to calendar". */}
+        <Text style={styles.hint}>{isWebsite ? 'Calendar alert' : 'Remind me'}</Text>
         {REMINDER_OPTIONS.map((minutes) => {
           const active = minutes === reminderMinutes;
           return (
@@ -50,7 +52,7 @@ export default function WatchlistScreen() {
               hitSlop={6}
               style={[styles.reminderChip, active && styles.reminderChipActive]}
               accessibilityRole="radio"
-              accessibilityLabel={`Remind me ${minutes} minutes before`}
+              accessibilityLabel={isWebsite ? `Calendar alert ${minutes} minutes before` : `Remind me ${minutes} minutes before`}
               accessibilityState={{ selected: active }}
             >
               <Text style={[styles.reminderText, active && styles.reminderTextActive]}>{minutes} min</Text>
@@ -59,6 +61,11 @@ export default function WatchlistScreen() {
         })}
         <Text style={styles.hint}>before</Text>
       </View>
+      {isWebsite && (
+        <Text style={styles.webNote}>
+          Used when you tap Add to calendar on a show. The browser can't remind you by itself; the Android app can.
+        </Text>
+      )}
       <SectionList
         sections={sections}
         keyExtractor={(i) => i.key}
@@ -117,6 +124,7 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: 26, fontWeight: '800' },
   reminderRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, rowGap: 8, paddingHorizontal: 14, paddingTop: 4, paddingBottom: 8 },
   hint: { color: colors.textDim, fontSize: 13 },
+  webNote: { color: colors.textDim, fontSize: 12, paddingHorizontal: 16, marginTop: -4, marginBottom: 6 },
   reminderChip: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 12, borderWidth: 1, borderColor: colors.divider },
   reminderChipActive: { borderColor: colors.accent },
   reminderText: { color: colors.textDim, fontSize: 12, fontWeight: '600' },
