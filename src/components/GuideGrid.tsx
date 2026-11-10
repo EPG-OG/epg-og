@@ -8,6 +8,8 @@ import { COMPACT_TEXT, colors } from '../theme';
 import { atLocalHour, floorToHalfHour, formatDay, formatRange, formatTime } from '../time';
 import { useWatchlist } from '../watchlist/WatchlistContext';
 import { ArrangeableCell } from './ArrangeableCell';
+import { isWebsite } from '../distribution';
+import { TIME_SLIDER_HEIGHT, TimeSlider } from './TimeSlider';
 import { useMouseDragScroll } from './useMouseDragScroll';
 import { ChannelLogo } from './ChannelLogo';
 
@@ -237,18 +239,19 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
   // In the browser, the mouse can grab the guide anywhere and drag it through the day and the
   // channels. On Favourites, a press on a channel is left for moving or removing it.
   const rootRef = useRef<ComponentRef<typeof View>>(null);
+  const scrollable = (r: typeof gridRef) => (r.current as unknown as { getScrollableNode?: () => HTMLElement } | null)?.getScrollableNode?.() ?? null;
   useMouseDragScroll({
-    nodes: () => {
-      const scrollable = (r: typeof gridRef) => (r.current as unknown as { getScrollableNode?: () => HTMLElement } | null)?.getScrollableNode?.() ?? null;
-      return { box: rootRef.current as unknown as HTMLElement | null, horizontal: scrollable(gridRef), vertical: scrollable(listRef) };
-    },
+    nodes: () => ({ box: rootRef.current as unknown as HTMLElement | null, horizontal: scrollable(gridRef), vertical: scrollable(listRef) }),
     ignore: (e) => {
-      if (listLocked) return true;
+      if (listLocked || (e.target as Element | null)?.closest?.('[data-time-slider]')) return true;
       if (!arrange) return false;
       const list = (listBoxRef.current as unknown as HTMLElement | null)?.getBoundingClientRect();
       return !!list && e.clientY >= list.top && e.clientX < list.left + m.channelW;
     },
   });
+
+  // On computers, the browser version also gets a time slider under the guide.
+  const [showSlider] = useState(() => isWebsite && typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: fine)').matches);
 
   const selectAndOpen = useCallback(
     (channel: Channel, p: Programme) => {
@@ -388,8 +391,12 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
       </ScrollView>
       </View>
 
+      {showSlider && (
+        <TimeSlider scroller={() => scrollable(gridRef)} from={from} to={to} now={now} pxPerMin={m.pxPerMin} inset={m.channelW} />
+      )}
+
       {toast && (
-        <View style={styles.toast} accessibilityLiveRegion="polite">
+        <View style={[styles.toast, showSlider && { bottom: 12 + TIME_SLIDER_HEIGHT }]} accessibilityLiveRegion="polite">
           <Ionicons name={toast.icon} size={18} color={colors.coffee} />
           <Text maxFontSizeMultiplier={COMPACT_TEXT} style={styles.toastText} numberOfLines={2}>
             {toast.text}
