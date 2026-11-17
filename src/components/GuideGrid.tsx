@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ScrollViewInstance } from 'react-native';
+import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
+import { Animated, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ScrollViewInstance } from 'react-native';
 import { isFiller } from '../epg/programme';
 import type { Channel, Programme, RegionKey } from '../epg/types';
 import { usePreferences } from '../preferences/PreferencesContext';
@@ -36,6 +36,12 @@ const GAP = 4;
 // Rows beyond the screen to keep ready, and how far to scroll before redrawing (rows must stay smaller).
 const ROW_OVERSCAN = 8;
 const ROW_REDRAW = 4;
+// Sideways, shows this many screens either side are kept drawn, and the drawn stretch moves on
+// once the view has travelled a whole screen. Fewer, bigger steps keep scrolling smooth.
+const DRAW_BEHIND = 2;
+const DRAW_AHEAD = 3;
+// Scroll-driven movement (sliding titles, the time header) runs on the UI thread on phones.
+const NATIVE = Platform.OS !== 'web';
 // Where the quick jumps land, phone time.
 const TONIGHT_HOUR = 20;
 const TOMORROW_HOUR = 9;
@@ -49,19 +55,23 @@ const moved = <T,>(list: T[], from: number, to: number) => {
   return out;
 };
 
+const WIDE: Metrics = { wide: true, channelW: 300, rowH: 78, pxPerMin: 6, headerH: 52 };
+const NARROW: Metrics = { wide: false, channelW: 112, rowH: 64, pxPerMin: 4, headerH: 48 };
+
+// The same object for as long as the layout stays the same, so rows that haven't changed are
+// never re-rendered just because the guide around them was.
 function useMetrics(): Metrics {
   const { width } = useWindowDimensions();
-  const wide = width >= 700;
-  return wide
-    ? { wide, channelW: 300, rowH: 78, pxPerMin: 6, headerH: 52 }
-    : { wide, channelW: 112, rowH: 64, pxPerMin: 4, headerH: 48 };
+  return width >= 700 ? WIDE : NARROW;
 }
 
 export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: Props) {
   const m = useMetrics();
   const { width: screenW, height: screenH } = useWindowDimensions();
-  const headerRef = useRef<ScrollViewInstance>(null);
   const gridRef = useRef<ScrollViewInstance>(null);
+  // The sideways scroll position, followed by the time header and the sliding titles without
+  // re-rendering anything.
+  const scrollAnim = useRef(new Animated.Value(0)).current;
   const [selectedId, setSelectedId] = useState(channels[0]?.id);
   const { isFavourite, toggleFavourite } = usePreferences();
   const [toast, setToast] = useState<{ icon: 'star' | 'star-outline'; text: string; undo?: () => void }>();
@@ -171,8 +181,8 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
     () => (arrange ? { startDrag, moveDrag, endDrag, removeChannel, moveChannelBy, showArrangeHint, setListLocked } : undefined),
     [arrange, startDrag, moveDrag, endDrag, removeChannel, moveChannelBy, showArrangeHint],
   );
-  // Left edge of the visible timeline, updated once scrolling settles. Titles of shows that
-  // began off-screen slide right to stay readable, like a set-top box guide.
+  // Left edge of the visible timeline, updated once scrolling settles: picks the highlighted
+  // Now/Tonight/Tomorrow button and the date by the clock.
   const [viewX, setViewX] = useState(0);
   const scrollX = useRef(0);
   const settleTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -182,8 +192,8 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
 
   const firstDrawnRow = topRow - ROW_OVERSCAN;
   const lastDrawnRow = topRow + Math.ceil(screenH / m.rowH) + ROW_OVERSCAN;
-  const drawFrom = from + ((drawX - screenW * 1.5) / m.pxPerMin) * 60;
-  const drawTo = from + ((drawX + screenW * 2.5) / m.pxPerMin) * 60;
+  const drawFrom = from + ((drawX - screenW * DRAW_BEHIND) / m.pxPerMin) * 60;
+  const drawTo = from + ((drawX + screenW * DRAW_AHEAD) / m.pxPerMin) * 60;
 
   const x = useCallback((t: number) => ((t - from) / 60) * m.pxPerMin, [from, m.pxPerMin]);
   const totalW = x(to);
@@ -197,7 +207,6 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
     (t: number, animated: boolean) => {
       const target = Math.max(0, x(t));
       gridRef.current?.scrollTo({ x: target, animated });
-      headerRef.current?.scrollTo({ x: target, animated });
       scrollX.current = target;
       setViewX(target);
       setDrawX(target);
@@ -253,6 +262,21 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
   // On computers, the browser version also gets a time slider under the guide.
   const [showSlider] = useState(() => isWebsite && typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: fine)').matches);
 
+  const gridScroll = useMemo(
+    () =>
+      Animated.event([{ nativeEvent: { contentOffset: { x: scrollAnim } } }], {
+        useNativeDriver: NATIVE,
+        listener: (e: { nativeEvent: { contentOffset: { x: number } } }) => {
+          const offset = e.nativeEvent.contentOffset.x;
+          scrollX.current = offset;
+          startTransition(() => setDrawX((prev) => (Math.abs(prev - offset) >= screenW ? offset : prev)));
+          clearTimeout(settleTimer.current);
+          settleTimer.current = setTimeout(() => setViewX(offset), 150);
+        },
+      }),
+    [scrollAnim, screenW],
+  );
+
   const selectAndOpen = useCallback(
     (channel: Channel, p: Programme) => {
       setSelectedId(channel.id);
@@ -294,16 +318,16 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
             </>
           )}
         </Pressable>
-        <ScrollView ref={headerRef} horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false}>
-          <View style={{ width: totalW, height: m.headerH }}>
+        <View style={styles.headerTrack}>
+          <Animated.View style={{ width: totalW, height: m.headerH, transform: [{ translateX: Animated.multiply(scrollAnim, -1) }] }}>
             {slots.map((t) => (
               <Text maxFontSizeMultiplier={COMPACT_TEXT} key={t} style={[styles.slot, m.wide && styles.slotWide, { left: x(t) + 4 }]}>
                 {formatTime(t)}
               </Text>
             ))}
             <View style={[styles.nowDot, { left: x(now) - 5 }]} />
-          </View>
-        </ScrollView>
+          </Animated.View>
+        </View>
       </View>
       <View style={styles.divider} />
 
@@ -323,7 +347,8 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
         onScroll={(e) => {
           scrollY.current = e.nativeEvent.contentOffset.y;
           const row = Math.floor(e.nativeEvent.contentOffset.y / m.rowH);
-          setTopRow((prev) => (Math.abs(prev - row) >= ROW_REDRAW ? row : prev));
+          // Low priority, so drawing the next rows never holds up the scroll itself.
+          startTransition(() => setTopRow((prev) => (Math.abs(prev - row) >= ROW_REDRAW ? row : prev)));
         }}
       >
         <View style={styles.row}>
@@ -347,20 +372,13 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
               );
             })}
           </View>
-          <ScrollView
+          <Animated.ScrollView
             ref={gridRef}
             horizontal
             showsHorizontalScrollIndicator={false}
             scrollEventThrottle={16}
             onContentSizeChange={(w) => w > 0 && openOnNow()}
-            onScroll={(e) => {
-              const offset = e.nativeEvent.contentOffset.x;
-              scrollX.current = offset;
-              headerRef.current?.scrollTo({ x: offset, animated: false });
-              setDrawX((prev) => (Math.abs(prev - offset) >= screenW / 2 ? offset : prev));
-              clearTimeout(settleTimer.current);
-              settleTimer.current = setTimeout(() => setViewX(offset), 120);
-            }}
+            onScroll={gridScroll}
           >
             <View style={{ width: totalW }}>
               {channels.map((c, i) => {
@@ -377,7 +395,7 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
                       to={to}
                       drawFrom={drawFrom}
                       drawTo={drawTo}
-                      viewX={viewX}
+                      scrollX={scrollAnim}
                       m={m}
                       onOpen={selectAndOpen}
                     />
@@ -386,7 +404,7 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
               })}
               <View pointerEvents="none" style={[styles.nowLine, { left: x(now) }]} />
             </View>
-          </ScrollView>
+          </Animated.ScrollView>
         </View>
       </ScrollView>
       </View>
@@ -511,6 +529,47 @@ const ChannelCell = memo(function ChannelCell({
   );
 });
 
+type RowProps = {
+  region: RegionKey;
+  channel: Channel;
+  selected: boolean;
+  now: number;
+  from: number;
+  to: number;
+  drawFrom: number;
+  drawTo: number;
+  scrollX: Animated.Value;
+  m: Metrics;
+  onOpen: (c: Channel, p: Programme) => void;
+};
+
+// Which shows a row draws: the first one inside the window and how many.
+function drawnShows(p: RowProps) {
+  const lo = Math.max(p.from, p.drawFrom);
+  const hi = Math.min(p.to, p.drawTo);
+  let first = -1;
+  let count = 0;
+  p.channel.programmes.forEach((show, i) => {
+    if (show.e > lo && show.s < hi) {
+      if (first < 0) first = i;
+      count++;
+    }
+  });
+  return first * 10000 + count;
+}
+
+const sameRow = (a: RowProps, b: RowProps) =>
+  a.region === b.region &&
+  a.channel === b.channel &&
+  a.selected === b.selected &&
+  a.now === b.now &&
+  a.from === b.from &&
+  a.to === b.to &&
+  a.scrollX === b.scrollX &&
+  a.m === b.m &&
+  a.onOpen === b.onOpen &&
+  ((a.drawFrom === b.drawFrom && a.drawTo === b.drawTo) || drawnShows(a) === drawnShows(b));
+
 const ProgrammeRow = memo(function ProgrammeRow({
   region,
   channel,
@@ -520,22 +579,10 @@ const ProgrammeRow = memo(function ProgrammeRow({
   to,
   drawFrom,
   drawTo,
-  viewX,
+  scrollX,
   m,
   onOpen,
-}: {
-  region: RegionKey;
-  channel: Channel;
-  selected: boolean;
-  now: number;
-  from: number;
-  to: number;
-  drawFrom: number;
-  drawTo: number;
-  viewX: number;
-  m: Metrics;
-  onOpen: (c: Channel, p: Programme) => void;
-}) {
+}: RowProps) {
   const { isSaved, toggle } = useWatchlist();
   const visible = channel.programmes.filter((p) => p.e > Math.max(from, drawFrom) && p.s < Math.min(to, drawTo));
   const next = selected ? channel.programmes.find((p) => p.s >= now) : undefined;
@@ -557,7 +604,10 @@ const ProgrammeRow = memo(function ProgrammeRow({
         const saved = isSaved(channel.id, p.s);
         // One-tap watchlist toggle on anything that hasn't started yet (and on saved shows, so they can be removed).
         const showSave = width > 84 && ((p.s > now && !filler) || saved);
-        const inset = Math.max(0, Math.min(viewX - left, width - (showSave ? 130 : 96)));
+        // A show that began off to the left slides its title along to stay readable, like a
+        // set-top box guide. Driven by the scroll itself, so nothing re-renders while scrolling.
+        const maxSlide = width - (showSave ? 130 : 96);
+        const slide = maxSlide > 4 ? scrollX.interpolate({ inputRange: [left, left + maxSlide], outputRange: [0, maxSlide], extrapolate: 'clamp' }) : 0;
 
         return (
           <Pressable
@@ -565,27 +615,13 @@ const ProgrammeRow = memo(function ProgrammeRow({
             onPress={() => onOpen(channel, p)}
             style={[
               styles.cell,
-              { left, width, top: GAP / 2, height: m.rowH - GAP, paddingLeft: 10 + inset, paddingRight: showSave ? 34 : 10 },
+              { left, width, top: GAP / 2, height: m.rowH - GAP, paddingLeft: 10, paddingRight: showSave ? 34 : 10 },
               cellBg[state],
               saved && styles.cellSaved,
             ]}
             accessibilityLabel={`${p.t}, ${formatRange(p.s, p.e)}${saved ? ', on watchlist' : ''}`}
           >
-            {showSave && (
-              <Pressable
-                onPress={() => toggle(region, channel, p)}
-                hitSlop={8}
-                style={styles.saveBtn}
-                accessibilityRole="button"
-                accessibilityLabel={saved ? `Remove ${p.t} from watchlist` : `Add ${p.t} to watchlist`}
-              >
-                <Ionicons
-                  name={saved ? 'bookmark' : 'bookmark-outline'}
-                  size={m.wide ? 20 : 17}
-                  color={saved ? colors.accent : onLight ? colors.textOnLight : colors.textDim}
-                />
-              </Pressable>
-            )}
+            <Animated.View style={slide ? { transform: [{ translateX: slide }] } : undefined}>
             <View style={styles.titleRow}>
               <Text maxFontSizeMultiplier={COMPACT_TEXT}
                 numberOfLines={1}
@@ -604,12 +640,28 @@ const ProgrammeRow = memo(function ProgrammeRow({
                 {formatRange(p.s, p.e)}
               </Text>
             )}
+            </Animated.View>
+            {showSave && (
+              <Pressable
+                onPress={() => toggle(region, channel, p)}
+                hitSlop={8}
+                style={[styles.saveBtn, cellBg[state]]}
+                accessibilityRole="button"
+                accessibilityLabel={saved ? `Remove ${p.t} from watchlist` : `Add ${p.t} to watchlist`}
+              >
+                <Ionicons
+                  name={saved ? 'bookmark' : 'bookmark-outline'}
+                  size={m.wide ? 20 : 17}
+                  color={saved ? colors.accent : onLight ? colors.textOnLight : colors.textDim}
+                />
+              </Pressable>
+            )}
           </Pressable>
         );
       })}
     </View>
   );
-});
+}, sameRow);
 
 const cellBg = StyleSheet.create({
   normal: { backgroundColor: colors.cell },
@@ -648,7 +700,8 @@ const styles = StyleSheet.create({
   selectedText: { color: colors.accent },
   cell: { position: 'absolute', borderRadius: 3, justifyContent: 'center', overflow: 'hidden' },
   cellSaved: { borderLeftWidth: 3, borderLeftColor: colors.accent },
-  saveBtn: { position: 'absolute', right: 8, top: 0, bottom: 0, justifyContent: 'center' },
+  saveBtn: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 34, alignItems: 'center', justifyContent: 'center' },
+  headerTrack: { flex: 1, overflow: 'hidden' },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start' },
   title: { color: colors.text, fontSize: 14, fontWeight: '600', flexShrink: 1 },
   titleWide: { fontSize: 19 },
