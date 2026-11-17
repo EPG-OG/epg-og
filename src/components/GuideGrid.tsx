@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
-import { Animated, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ScrollViewInstance } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ScrollViewInstance } from 'react-native';
 import { isFiller } from '../epg/programme';
 import type { Channel, Programme, RegionKey } from '../epg/types';
 import { usePreferences } from '../preferences/PreferencesContext';
@@ -42,6 +42,8 @@ const DRAW_BEHIND = 2;
 const DRAW_AHEAD = 3;
 // Scroll-driven movement (sliding titles, the time header) runs on the UI thread on phones.
 const NATIVE = Platform.OS !== 'web';
+// Shows on your watchlist starting within this many seconds (or on now) get the shimmer.
+const SHIMMER_WITHIN = 3600;
 // Where the quick jumps land, phone time.
 const TONIGHT_HOUR = 20;
 const TOMORROW_HOUR = 9;
@@ -72,6 +74,30 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
   // The sideways scroll position, followed by the time header and the sliding titles without
   // re-rendering anything.
   const scrollAnim = useRef(new Animated.Value(0)).current;
+  // One shared sweep of light for every watchlist show coming up soon, run on the UI thread.
+  // Left still for people who've asked their phone to reduce motion.
+  const shimmerAnim = useRef(new Animated.Value(-1)).current;
+  useEffect(() => {
+    let loop: Animated.CompositeAnimation | undefined;
+    let cancelled = false;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .catch(() => false)
+      .then((reduce) => {
+        if (reduce || cancelled) return;
+        loop = Animated.loop(
+          Animated.sequence([
+            Animated.timing(shimmerAnim, { toValue: 0, duration: 0, useNativeDriver: NATIVE }),
+            Animated.timing(shimmerAnim, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.quad), useNativeDriver: NATIVE }),
+            Animated.delay(2800),
+          ]),
+        );
+        loop.start();
+      });
+    return () => {
+      cancelled = true;
+      loop?.stop();
+    };
+  }, [shimmerAnim]);
   const [selectedId, setSelectedId] = useState(channels[0]?.id);
   const { isFavourite, toggleFavourite } = usePreferences();
   const [toast, setToast] = useState<{ icon: 'star' | 'star-outline'; text: string; undo?: () => void }>();
@@ -396,6 +422,7 @@ export function GuideGrid({ region, channels, from, to, now, onOpen, arrange }: 
                       drawFrom={drawFrom}
                       drawTo={drawTo}
                       scrollX={scrollAnim}
+                      shimmer={shimmerAnim}
                       m={m}
                       onOpen={selectAndOpen}
                     />
@@ -539,6 +566,7 @@ type RowProps = {
   drawFrom: number;
   drawTo: number;
   scrollX: Animated.Value;
+  shimmer: Animated.Value;
   m: Metrics;
   onOpen: (c: Channel, p: Programme) => void;
 };
@@ -566,6 +594,7 @@ const sameRow = (a: RowProps, b: RowProps) =>
   a.from === b.from &&
   a.to === b.to &&
   a.scrollX === b.scrollX &&
+  a.shimmer === b.shimmer &&
   a.m === b.m &&
   a.onOpen === b.onOpen &&
   ((a.drawFrom === b.drawFrom && a.drawTo === b.drawTo) || drawnShows(a) === drawnShows(b));
@@ -580,6 +609,7 @@ const ProgrammeRow = memo(function ProgrammeRow({
   drawFrom,
   drawTo,
   scrollX,
+  shimmer,
   m,
   onOpen,
 }: RowProps) {
@@ -608,6 +638,12 @@ const ProgrammeRow = memo(function ProgrammeRow({
         // set-top box guide. Driven by the scroll itself, so nothing re-renders while scrolling.
         const maxSlide = width - (showSave ? 130 : 96);
         const slide = maxSlide > 4 ? scrollX.interpolate({ inputRange: [left, left + maxSlide], outputRange: [0, maxSlide], extrapolate: 'clamp' }) : 0;
+        // Your watchlist shows (including every airing of shows you follow) are lit from within
+        // until they finish, so they stand out in the grid; the ones starting soon shimmer too.
+        const spotlight = saved && !past;
+        const soon = spotlight && (airing || p.s - now <= SHIMMER_WITHIN);
+        const bg = spotlight && state !== 'now' ? styles.cellSpotBg : cellBg[state];
+        const sweep = soon ? shimmer.interpolate({ inputRange: [0, 1], outputRange: [-70, width + 20] }) : null;
 
         return (
           <Pressable
@@ -616,11 +652,17 @@ const ProgrammeRow = memo(function ProgrammeRow({
             style={[
               styles.cell,
               { left, width, top: GAP / 2, height: m.rowH - GAP, paddingLeft: 10, paddingRight: showSave ? 34 : 10 },
-              cellBg[state],
+              bg,
               saved && styles.cellSaved,
+              spotlight && styles.cellSpot,
             ]}
             accessibilityLabel={`${p.t}, ${formatRange(p.s, p.e)}${saved ? ', on watchlist' : ''}`}
           >
+            {sweep && (
+              <Animated.View pointerEvents="none" style={[styles.shimmer, onLight && styles.shimmerOnLight, { transform: [{ translateX: sweep }, { skewX: '-20deg' }] }]}>
+                <View style={[styles.shimmerCore, onLight && styles.shimmerCoreOnLight]} />
+              </Animated.View>
+            )}
             <Animated.View style={slide ? { transform: [{ translateX: slide }] } : undefined}>
             <View style={styles.titleRow}>
               <Text maxFontSizeMultiplier={COMPACT_TEXT}
@@ -645,7 +687,7 @@ const ProgrammeRow = memo(function ProgrammeRow({
               <Pressable
                 onPress={() => toggle(region, channel, p)}
                 hitSlop={8}
-                style={[styles.saveBtn, cellBg[state]]}
+                style={[styles.saveBtn, bg]}
                 accessibilityRole="button"
                 accessibilityLabel={saved ? `Remove ${p.t} from watchlist` : `Add ${p.t} to watchlist`}
               >
@@ -700,6 +742,20 @@ const styles = StyleSheet.create({
   selectedText: { color: colors.accent },
   cell: { position: 'absolute', borderRadius: 3, justifyContent: 'center', overflow: 'hidden' },
   cellSaved: { borderLeftWidth: 3, borderLeftColor: colors.accent },
+  // Lit from within: a blue-tinted cell with a glowing inner edge.
+  cellSpot: {
+    borderWidth: 1,
+    borderLeftWidth: 3,
+    borderColor: 'rgba(110,190,255,.85)',
+    borderLeftColor: colors.accent,
+    boxShadow: 'inset 0 0 14px 1px rgba(62,164,240,.5)',
+  },
+  cellSpotBg: { backgroundColor: '#24364d' },
+  shimmer: { position: 'absolute', top: -6, bottom: -6, left: 0, width: 46, backgroundColor: 'rgba(170,215,255,.10)' },
+  shimmerCore: { position: 'absolute', top: 0, bottom: 0, left: 15, width: 16, backgroundColor: 'rgba(210,235,255,.20)' },
+  // On the pale "on now" cell a light sweep wouldn't show, so it's blue there.
+  shimmerOnLight: { backgroundColor: 'rgba(62,164,240,.16)' },
+  shimmerCoreOnLight: { backgroundColor: 'rgba(62,164,240,.26)' },
   saveBtn: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 34, alignItems: 'center', justifyContent: 'center' },
   headerTrack: { flex: 1, overflow: 'hidden' },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start' },
