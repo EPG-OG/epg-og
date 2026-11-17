@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useIsFocused } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GUIDE_HOURS_AHEAD, GUIDE_HOURS_BACK } from '../config';
 import type { Channel, Programme, RegionKey } from '../epg/types';
 import { useGuide } from '../epg/useGuide';
@@ -15,6 +16,8 @@ import { ListingsMessage } from './ListingsMessage';
 import { ProgrammeSheet } from './ProgrammeSheet';
 import { RaceTrack } from './RaceTrack';
 import { RetroTitle } from './RetroTitle';
+import { TITLE_ART } from './titleArt';
+import { TitleInvasion, useRareInvasion, type Box } from './TitleInvasion';
 import { UpdateBanner } from './UpdateBanner';
 
 const ALL = 'all';
@@ -24,6 +27,20 @@ export function RegionGuide({ region, title }: { region: RegionKey; title: strin
   const now = useNow();
   const { loaded, lastCategory, setLastCategory } = usePreferences();
   const [selection, setSelection] = useState<{ channel: Channel; programme: Programme }>();
+
+  // Now and then on phones, flying saucers blow the title apart and fighter jets save the day
+  // (TitleInvasion.tsx). Holding the title down calls them in.
+  const { width: screenW } = useWindowDimensions();
+  const phone = screenW < 700;
+  const focused = useIsFocused();
+  const insets = useSafeAreaInsets();
+  const [invasion, setInvasion] = useState(0);
+  const [bar, setBar] = useState({ w: 0, h: 0 });
+  const [titleBox, setTitleBox] = useState<Box | null>(null);
+  const [subtitleBox, setSubtitleBox] = useState<Box | null>(null);
+  const invade = useCallback(() => setInvasion((n) => n || Date.now()), []);
+  const endInvasion = useCallback(() => setInvasion(0), []);
+  useRareInvasion(phone && focused, invade);
 
   // The window is fixed per data load so the grid doesn't shift under the user's thumb.
   const window = useMemo(() => {
@@ -50,11 +67,40 @@ export function RegionGuide({ region, title }: { region: RegionKey; title: strin
 
   return (
     <SafeAreaView edges={['top']} style={styles.root}>
-      <View style={styles.titleBar}>
-        <RetroTitle text={title} region={region} />
-        <Text style={styles.subtitle} numberOfLines={1} maxFontSizeMultiplier={COMPACT_TEXT}>
+      <View style={styles.titleBar} onLayout={(e) => setBar({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+        <Pressable
+          onLongPress={phone ? invade : undefined}
+          delayLongPress={700}
+          style={invasion ? styles.hidden : undefined}
+          onLayout={(e) => {
+            const { x, y, height } = e.nativeEvent.layout;
+            const art = TITLE_ART[region];
+            setTitleBox({ x, y: y + height - art.height, w: art.width, h: art.height });
+          }}
+        >
+          <RetroTitle text={title} region={region} />
+        </Pressable>
+        <Text
+          style={[styles.subtitle, invasion ? styles.hidden : undefined]}
+          numberOfLines={1}
+          maxFontSizeMultiplier={COMPACT_TEXT}
+          onLayout={(e) => setSubtitleBox({ x: e.nativeEvent.layout.x, y: e.nativeEvent.layout.y, w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
+        >
           TV Guide
         </Text>
+        {invasion > 0 && titleBox && (
+          <TitleInvasion
+            key={invasion}
+            region={region}
+            title={titleBox}
+            subtitle={subtitleBox}
+            subtitleStyle={styles.subtitle}
+            top={insets.top}
+            width={bar.w}
+            height={bar.h}
+            onDone={endInvasion}
+          />
+        )}
         <RaceTrack region={region} />
         <View style={styles.actions}>
           <HeaderActions />
@@ -95,6 +141,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   titleBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 12, paddingHorizontal: 14, paddingTop: 8 },
   subtitle: { color: colors.textDim, fontSize: 15, fontWeight: '600', marginBottom: 6 },
+  hidden: { opacity: 0 },
   actions: { marginLeft: 'auto', alignSelf: 'center', padding: 4 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
 });
